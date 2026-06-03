@@ -8,7 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
--- Khởi tạo bảng Settings mặc định
+-- Khởi tạo bảng Settings mặc định (Bổ sung dữ liệu nút SAFE màn hình)
 local MySettings = {
     speedValue = 50,
     infiniteJumpEnabled = false,
@@ -18,8 +18,11 @@ local MySettings = {
     tpaEnabled = false,
     moveEnabled = false,
     tpSizeValue = 50,
-    tpSquareX_Scale = 0.5, tpSquareX_Offset = -25,
-    tpSquareY_Scale = 0.5, tpSquareY_Offset = -25
+    safeSizeValue = 50, -- Kích thước mặc định nút Safe vuông
+    tpSquareX_Scale = 0.5, tpSquareX_Offset = -55,
+    tpSquareY_Scale = 0.5, tpSquareY_Offset = -25,
+    safeSquareX_Scale = 0.5, safeSquareX_Offset = 5, -- Lệch một chút để không đè lên nút TP
+    safeSquareY_Scale = 0.5, safeSquareY_Offset = -25
 }
 
 -- HÀM LƯU CONFIG (Ghi vào file)
@@ -57,6 +60,7 @@ local espEnabled = MySettings.espEnabled
 local tpaEnabled = MySettings.tpaEnabled
 local moveEnabled = MySettings.moveEnabled
 local tpSizeValue = MySettings.tpSizeValue
+local safeSizeValue = MySettings.safeSizeValue
 local safePart = nil 
 local espObjects = {}
 
@@ -66,10 +70,10 @@ gui.Name = "JNHHGamingCompact"
 gui.ResetOnSpawn = false 
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Bảng Main
+-- Bảng Main (Tăng chiều cao lên 260 để chứa thêm nút chỉnh Size Safe)
 local frame = Instance.new("Frame")
 frame.Name = "CompactFrame"
-frame.Size = UDim2.new(0, 160, 0, 230)
+frame.Size = UDim2.new(0, 160, 0, 260)
 frame.Position = UDim2.new(0, 50, 0, 50) 
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BackgroundTransparency = 0.3
@@ -91,7 +95,7 @@ openButton.Active = true
 openButton.Parent = gui
 Instance.new("UICorner", openButton).CornerRadius = UDim.new(0, 4)
 
--- HỆ THỐNG DRAG
+-- HỆ THỐNG DRAG MENU
 local function makeDraggable(uiInstance)
     local dragging = false
     local dragInput, dragStart, startPos
@@ -229,14 +233,14 @@ moveButton.Text = moveEnabled and "Move: ON" or "Move: OFF"
 moveButton.Parent = frame
 Instance.new("UICorner", moveButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 5: Nút chỉnh kích thước nút vuông đỏ
+-- HÀNG 5: Nút chỉnh kích thước nút vuông đỏ TP
 local decreaseSizeButton = Instance.new("TextButton")
 decreaseSizeButton.Size = UDim2.new(0, 72, 0, 25)
 decreaseSizeButton.Position = UDim2.new(0, 5, 0, 165)
 decreaseSizeButton.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
 decreaseSizeButton.TextColor3 = Color3.new(1, 1, 1)
 decreaseSizeButton.Font = Enum.Font.SourceSansBold
-decreaseSizeButton.Text = "Size: -"
+decreaseSizeButton.Text = "TP Size:-"
 decreaseSizeButton.Parent = frame
 Instance.new("UICorner", decreaseSizeButton).CornerRadius = UDim.new(0, 4)
 
@@ -246,21 +250,42 @@ increaseSizeButton.Position = UDim2.new(0, 83, 0, 165)
 increaseSizeButton.BackgroundColor3 = Color3.fromRGB(20, 80, 20)
 increaseSizeButton.TextColor3 = Color3.new(1, 1, 1)
 increaseSizeButton.Font = Enum.Font.SourceSansBold
-increaseSizeButton.Text = "Size: +"
+increaseSizeButton.Text = "TP Size:+"
 increaseSizeButton.Parent = frame
 Instance.new("UICorner", increaseSizeButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG CUỐI: Nút Thu nhỏ
+-- HÀNG 6: Nút chỉnh kích thước nút vuông vàng SAFE (MỚI THÊM)
+local decreaseSafeSizeBtn = Instance.new("TextButton")
+decreaseSafeSizeBtn.Size = UDim2.new(0, 72, 0, 25)
+decreaseSafeSizeBtn.Position = UDim2.new(0, 5, 0, 195)
+decreaseSafeSizeBtn.BackgroundColor3 = Color3.fromRGB(100, 60, 0)
+decreaseSafeSizeBtn.TextColor3 = Color3.new(1, 1, 1)
+decreaseSafeSizeBtn.Font = Enum.Font.SourceSansBold
+decreaseSafeSizeBtn.Text = "SF Size:-"
+decreaseSafeSizeBtn.Parent = frame
+Instance.new("UICorner", decreaseSafeSizeBtn).CornerRadius = UDim.new(0, 4)
+
+local increaseSafeSizeBtn = Instance.new("TextButton")
+increaseSafeSizeBtn.Size = UDim2.new(0, 72, 0, 25)
+increaseSafeSizeBtn.Position = UDim2.new(0, 83, 0, 195)
+increaseSafeSizeBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
+increaseSafeSizeBtn.TextColor3 = Color3.new(1, 1, 1)
+increaseSafeSizeBtn.Font = Enum.Font.SourceSansBold
+increaseSafeSizeBtn.Text = "SF Size:+"
+increaseSafeSizeBtn.Parent = frame
+Instance.new("UICorner", increaseSafeSizeBtn).CornerRadius = UDim.new(0, 4)
+
+-- HÀNG CUỐI: Nút Thu nhỏ (Hạ xuống Y = 225)
 local minimizeButton = Instance.new("TextButton")
 minimizeButton.Size = UDim2.new(0, 150, 0, 25)
-minimizeButton.Position = UDim2.new(0, 5, 0, 195)
+minimizeButton.Position = UDim2.new(0, 5, 0, 225)
 minimizeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 minimizeButton.TextColor3 = Color3.new(1, 1, 1)
 minimizeButton.Text = "Thu nhỏ (-)"
 minimizeButton.Parent = frame
 Instance.new("UICorner", minimizeButton).CornerRadius = UDim.new(0, 4)
 
--- TẠO NÚT VUÔNG ĐỎ TP
+-- TẠO NÚT VUÔNG ĐỎ TP TRÊN MÀN HÌNH
 local tpSquare = Instance.new("TextButton")
 tpSquare.Name = "TPSquareButton"
 tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue)
@@ -275,42 +300,63 @@ tpSquare.Active = true
 tpSquare.BorderSizePixel = 0
 tpSquare.Parent = gui
 
--- Kéo thả Nút Vuông Đỏ
-local squareDragging = false
-local squareDragInput, squareDragStart, squareStartPos
-local squareTouchObject = nil
+-- TẠO NÚT VUÔNG VÀNG SAFE TRÊN MÀN HÌNH (MỚI THÊM)
+local safeSquare = Instance.new("TextButton")
+safeSquare.Name = "SafeSquareButton"
+safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue)
+safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset) 
+safeSquare.BackgroundColor3 = Color3.fromRGB(255, 200, 0) 
+safeSquare.Text = "SAFE"
+safeSquare.TextColor3 = Color3.new(0, 0, 0)
+safeSquare.Font = Enum.Font.SourceSansBold
+safeSquare.TextSize = 14
+safeSquare.Visible = safeEnabled
+safeSquare.Active = true
+safeSquare.BorderSizePixel = 0
+safeSquare.Parent = gui
 
-tpSquare.InputBegan:Connect(function(input)
-    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and moveEnabled and not squareDragging then
-        squareDragging = true; squareTouchObject = input; squareDragStart = input.Position; squareStartPos = tpSquare.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                squareDragging = false; squareTouchObject = nil
-                MySettings.tpSquareX_Scale = tpSquare.Position.X.Scale
-                MySettings.tpSquareX_Offset = tpSquare.Position.X.Offset
-                MySettings.tpSquareY_Scale = tpSquare.Position.Y.Scale
-                MySettings.tpSquareY_Offset = tpSquare.Position.Y.Offset
-                SaveConfig()
-            end
-        end)
-    end
-end)
+-- HỆ THỐNG KÉO THẢ VÀ LƯU VỊ TRÍ CHO HAI NÚT TRÊN MÀN HÌNH
+local function setupSquareDrag(targetUi, settingPrefix)
+    local dragging = false
+    local dragInput, dragStart, startPos
+    local touchObject = nil
 
-tpSquare.InputChanged:Connect(function(input)
-    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and squareDragging and moveEnabled then
-        if input == squareTouchObject or input.UserInputType == Enum.UserInputType.MouseMovement then
-            squareDragInput = input
+    targetUi.InputBegan:Connect(function(input)
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and moveEnabled and not dragging then
+            dragging = true; touchObject = input; dragStart = input.Position; startPos = targetUi.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false; touchObject = nil
+                    MySettings[settingPrefix.."X_Scale"] = targetUi.Position.X.Scale
+                    MySettings[settingPrefix.."X_Offset"] = targetUi.Position.X.Offset
+                    MySettings[settingPrefix.."Y_Scale"] = targetUi.Position.Y.Scale
+                    MySettings[settingPrefix.."Y_Offset"] = targetUi.Position.Y.Offset
+                    SaveConfig()
+                end
+            end)
         end
-    end
-end)
+    end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if input == squareDragInput and squareDragging and moveEnabled then
-        local delta = input.Position - squareDragStart
-        tpSquare.Position = UDim2.new(squareStartPos.X.Scale, squareStartPos.X.Offset + delta.X, squareStartPos.Y.Scale, squareStartPos.Y.Offset + delta.Y)
-    end
-end)
+    targetUi.InputChanged:Connect(function(input)
+        if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging and moveEnabled then
+            if input == touchObject or input.UserInputType == Enum.UserInputType.MouseMovement then
+                dragInput = input
+            end
+        end
+    end)
 
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging and moveEnabled then
+            local delta = input.Position - dragStart
+            targetUi.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+setupSquareDrag(tpSquare, "tpSquare")
+setupSquareDrag(safeSquare, "safeSquare")
+
+-- Tìm người chơi gần nhất
 local function getClosestPlayer()
     local closestPlayer = nil; local shortestDistance = math.huge
     local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -327,6 +373,7 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
+-- Tương tác chỉnh tốc độ và nhảy vô hạn
 decreaseButton.MouseButton1Click:Connect(function() 
     if speedValue > 16 then 
         speedValue = speedValue - 5; speedLabel.Text = "Speed: "..speedValue 
@@ -348,6 +395,7 @@ jumpButton.MouseButton1Click:Connect(function()
     MySettings.infiniteJumpEnabled = infiniteJumpEnabled; SaveConfig()
 end)
 
+-- Sự kiện thay đổi kích thước nút TP và Safe
 decreaseSizeButton.MouseButton1Click:Connect(function()
     if tpSizeValue > 30 then
         tpSizeValue = tpSizeValue - 10; tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue)
@@ -362,6 +410,21 @@ increaseSizeButton.MouseButton1Click:Connect(function()
     end
 end)
 
+decreaseSafeSizeBtn.MouseButton1Click:Connect(function()
+    if safeSizeValue > 30 then
+        safeSizeValue = safeSizeValue - 10; safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue)
+        MySettings.safeSizeValue = safeSizeValue; SaveConfig()
+    end
+end)
+
+increaseSafeSizeBtn.MouseButton1Click:Connect(function()
+    if safeSizeValue < 150 then
+        safeSizeValue = safeSizeValue + 10; safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue)
+        MySettings.safeSizeValue = safeSizeValue; SaveConfig()
+    end
+end)
+
+-- LOGIC HỆ THỐNG SAFE PLATFORM
 local function checkSafePlatform()
     if safeEnabled then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -380,7 +443,16 @@ safeButton.MouseButton1Click:Connect(function()
     safeEnabled = not safeEnabled
     safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"
     safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
+    safeSquare.Visible = safeEnabled
     MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform()
+end)
+
+-- Click nút Safe vuông trên màn hình để bay về tổ ấm ngay lập tức
+safeSquare.MouseButton1Click:Connect(function()
+    if safeEnabled and not squareDragging and safePart then
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end
+    end
 end)
 
 task.spawn(function()
@@ -395,6 +467,7 @@ task.spawn(function()
     end
 end)
 
+-- TPA và di chuyển nút bấm
 tpaButton.MouseButton1Click:Connect(function()
     tpaEnabled = not tpaEnabled
     tpaButton.Text = tpaEnabled and "TPA: ON" or "TPA: OFF"
@@ -423,12 +496,14 @@ tpSquare.MouseButton1Click:Connect(function()
     end
 end)
 
+-- HỆ THỐNG SỬA LỖI ESP CHỈ THẲNG VÀO ĐẦU NGƯỜI CHƠI + ĐỔI DÂY MÀU ĐỎ
 local function createESP(player)
     if player == LocalPlayer then return end
     local function applyESP(character)
         task.wait(0.5)
         if not espEnabled then return end
-        local head = character:WaitForChild("Head", 5); local hrp = character:WaitForChild("HumanoidRootPart", 5)
+        local head = character:WaitForChild("Head", 5)
+        local hrp = character:WaitForChild("HumanoidRootPart", 5)
         if not head or not hrp then return end
 
         local billboard = Instance.new("BillboardGui"); billboard.Name = "ESP_Billboard"
@@ -442,19 +517,21 @@ local function createESP(player)
 
         local tracerFrame = Instance.new("Frame"); tracerFrame.Name = "ESP_Tracer"
         tracerFrame.BackgroundTransparency = 0; tracerFrame.BorderSizePixel = 0
-        tracerFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 255); tracerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+        tracerFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- ĐÃ SỬA THÀNH MÀU ĐỎ
+        tracerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
         tracerFrame.Parent = gui
 
         espObjects[player] = {Billboard = billboard, Tracer = tracerFrame}
 
         local connection
         connection = RunService.RenderStepped:Connect(function()
-            if not espEnabled or not character:IsDescendantOf(workspace) or not hrp then
+            if not espEnabled or not character:IsDescendantOf(workspace) or not head then
                 tracerFrame:Destroy(); if connection then connection:Disconnect() end
                 return
             end
             local camera = workspace.CurrentCamera
-            local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+            -- ĐÃ SỬA: Lấy tọa độ từ phần HEAD thay vì HRP để chỉ thẳng vào đầu
+            local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
             if onScreen then
                 tracerFrame.Visible = true; local startX = camera.ViewportSize.X / 2; local startY = 0
                 local endX = screenPos.X; local endY = screenPos.Y
@@ -547,3 +624,4 @@ task.spawn(function()
 end)
 
 checkSafePlatform(); updateESPStatus()
+
