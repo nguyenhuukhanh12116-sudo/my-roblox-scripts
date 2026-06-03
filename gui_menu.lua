@@ -11,6 +11,7 @@ local HttpService = game:GetService("HttpService")
 -- Khởi tạo bảng Settings mặc định
 local MySettings = {
     speedValue = 50,
+    speedEnabled = false, -- Thêm trạng thái Bật/Tắt Speed
     infiniteJumpEnabled = false,
     safeEnabled = false,
     tpNearestEnabled = false,
@@ -46,6 +47,7 @@ end
 LoadConfig()
 
 local speedValue = MySettings.speedValue
+local speedEnabled = MySettings.speedEnabled
 local infiniteJumpEnabled = MySettings.infiniteJumpEnabled
 local safeEnabled = MySettings.safeEnabled
 local tpNearestEnabled = MySettings.tpNearestEnabled
@@ -60,7 +62,7 @@ local safePart = nil
 local espObjects = {}
 local squareTpActive = false 
 local isAttacking = false 
-local oldCFrame = nil -- Lưu vị trí cũ để biến về
+local oldCFrame = nil 
 
 -- Create GUI
 local gui = Instance.new("ScreenGui")
@@ -68,10 +70,10 @@ gui.Name = "JNHHGamingCompact"
 gui.ResetOnSpawn = false 
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Bảng Main
+-- Bảng Main (Đã tăng chiều cao để chứa nút mới)
 local frame = Instance.new("Frame")
 frame.Name = "CompactFrame"
-frame.Size = UDim2.new(0, 160, 0, 290)
+frame.Size = UDim2.new(0, 160, 0, 315)
 frame.Position = UDim2.new(0, 50, 0, 50) 
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BackgroundTransparency = 0.3
@@ -118,116 +120,122 @@ local function makeDraggable(uiInstance)
 end
 makeDraggable(frame); makeDraggable(openButton)
 
--- Nút giảm WalkSpeed (-)
+-- HÀNG 1: Chỉnh số WalkSpeed
 local decreaseButton = Instance.new("TextButton")
 decreaseButton.Size = UDim2.new(0, 30, 0, 25); decreaseButton.Position = UDim2.new(0, 5, 0, 10)
 decreaseButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50); decreaseButton.TextColor3 = Color3.new(1, 1, 1)
 decreaseButton.Text = "-"; decreaseButton.Parent = frame
 Instance.new("UICorner", decreaseButton).CornerRadius = UDim.new(0, 4)
 
--- Label Tốc độ WalkSpeed
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0, 80, 0, 25); speedLabel.Position = UDim2.new(0, 40, 0, 10)
 speedLabel.BackgroundTransparency = 1; speedLabel.TextColor3 = Color3.new(1, 1, 1)
 speedLabel.Text = "Speed: " .. speedValue; speedLabel.Parent = frame
 
--- Nút tăng WalkSpeed (+)
 local increaseButton = Instance.new("TextButton")
 increaseButton.Size = UDim2.new(0, 30, 0, 25); increaseButton.Position = UDim2.new(0, 125, 0, 10)
 increaseButton.BackgroundColor3 = Color3.fromRGB(50, 255, 50); increaseButton.TextColor3 = Color3.new(1, 1, 1)
 increaseButton.Text = "+"; increaseButton.Parent = frame
 Instance.new("UICorner", increaseButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 1: Inf Jump & Safe Base
+-- HÀNG 2: NÚT BẬT TẮT SPEED
+local speedToggleButton = Instance.new("TextButton")
+speedToggleButton.Size = UDim2.new(0, 150, 0, 25); speedToggleButton.Position = UDim2.new(0, 5, 0, 40)
+speedToggleButton.BackgroundColor3 = speedEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 255)
+speedToggleButton.TextColor3 = Color3.new(1, 1, 1); speedToggleButton.Font = Enum.Font.SourceSansBold; speedToggleButton.TextSize = 14
+speedToggleButton.Text = speedEnabled and "Speed: ON" or "Speed: OFF"; speedToggleButton.Parent = frame
+Instance.new("UICorner", speedToggleButton).CornerRadius = UDim.new(0, 4)
+
+-- HÀNG 3: Inf Jump & Safe Base
 local jumpButton = Instance.new("TextButton")
-jumpButton.Size = UDim2.new(0, 72, 0, 25); jumpButton.Position = UDim2.new(0, 5, 0, 45)
+jumpButton.Size = UDim2.new(0, 72, 0, 25); jumpButton.Position = UDim2.new(0, 5, 0, 70)
 jumpButton.BackgroundColor3 = infiniteJumpEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 255)
 jumpButton.TextColor3 = Color3.new(1, 1, 1); jumpButton.Font = Enum.Font.SourceSansBold; jumpButton.TextSize = 13
 jumpButton.Text = infiniteJumpEnabled and "Inf: ON" or "Inf: OFF"; jumpButton.Parent = frame
 Instance.new("UICorner", jumpButton).CornerRadius = UDim.new(0, 4)
 
 local safeButton = Instance.new("TextButton")
-safeButton.Size = UDim2.new(0, 72, 0, 25); safeButton.Position = UDim2.new(0, 83, 0, 45)
+safeButton.Size = UDim2.new(0, 72, 0, 25); safeButton.Position = UDim2.new(0, 83, 0, 70)
 safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
 safeButton.TextColor3 = Color3.new(0, 0, 0); safeButton.Font = Enum.Font.SourceSansBold; safeButton.TextSize = 13
 safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"; safeButton.Parent = frame
 Instance.new("UICorner", safeButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 2: TP & Nút bật/tắt nút Safe
+-- HÀNG 4: TP & Nút bật/tắt nút Safe
 local tpButton = Instance.new("TextButton")
-tpButton.Size = UDim2.new(0, 72, 0, 25); tpButton.Position = UDim2.new(0, 5, 0, 75)
+tpButton.Size = UDim2.new(0, 72, 0, 25); tpButton.Position = UDim2.new(0, 5, 0, 100)
 tpButton.BackgroundColor3 = tpNearestEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 100, 0)
 tpButton.TextColor3 = Color3.new(1, 1, 1); tpButton.Font = Enum.Font.SourceSansBold; tpButton.TextSize = 13
 tpButton.Text = tpNearestEnabled and "TP: ON" or "TP: OFF"; tpButton.Parent = frame
 Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 4)
 
 local showSafeBtn = Instance.new("TextButton")
-showSafeBtn.Size = UDim2.new(0, 72, 0, 25); showSafeBtn.Position = UDim2.new(0, 83, 0, 75)
+showSafeBtn.Size = UDim2.new(0, 72, 0, 25); showSafeBtn.Position = UDim2.new(0, 83, 0, 100)
 showSafeBtn.BackgroundColor3 = showSafeSquare and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
 showSafeBtn.TextColor3 = Color3.new(1, 1, 1); showSafeBtn.Font = Enum.Font.SourceSansBold; showSafeBtn.TextSize = 11
 showSafeBtn.Text = showSafeSquare and "BtnSF:ON" or "BtnSF:OFF"; showSafeBtn.Parent = frame
 Instance.new("UICorner", showSafeBtn).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 3: ESP
+-- HÀNG 5: ESP
 local espButton = Instance.new("TextButton")
-espButton.Size = UDim2.new(0, 150, 0, 25); espButton.Position = UDim2.new(0, 5, 0, 105)
+espButton.Size = UDim2.new(0, 150, 0, 25); espButton.Position = UDim2.new(0, 5, 0, 130)
 espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 150, 255)
 espButton.TextColor3 = Color3.new(1, 1, 1); espButton.Font = Enum.Font.SourceSansBold; espButton.TextSize = 14
 espButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"; espButton.Parent = frame
 Instance.new("UICorner", espButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 4: TPA & Move
+-- HÀNG 6: TPA & Move
 local tpaButton = Instance.new("TextButton")
-tpaButton.Size = UDim2.new(0, 72, 0, 25); tpaButton.Position = UDim2.new(0, 5, 0, 135)
+tpaButton.Size = UDim2.new(0, 72, 0, 25); tpaButton.Position = UDim2.new(0, 5, 0, 160)
 tpaButton.BackgroundColor3 = tpaEnabled and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(0, 0, 0)
 tpaButton.TextColor3 = Color3.new(1, 1, 1); tpaButton.Font = Enum.Font.SourceSansBold; tpaButton.TextSize = 13
 tpaButton.Text = tpaEnabled and "TPA: ON" or "TPA: OFF"; tpaButton.Parent = frame
 Instance.new("UICorner", tpaButton).CornerRadius = UDim.new(0, 4)
 
 local moveButton = Instance.new("TextButton")
-moveButton.Size = UDim2.new(0, 72, 0, 25); moveButton.Position = UDim2.new(0, 83, 0, 135)
+moveButton.Size = UDim2.new(0, 72, 0, 25); moveButton.Position = UDim2.new(0, 83, 0, 160)
 moveButton.BackgroundColor3 = moveEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(130, 130, 130)
 moveButton.TextColor3 = Color3.new(1, 1, 1); moveButton.Font = Enum.Font.SourceSansBold; moveButton.TextSize = 13
 moveButton.Text = moveEnabled and "Move: ON" or "Move: OFF"; moveButton.Parent = frame
 Instance.new("UICorner", moveButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 5: Chỉnh Size TP
+-- HÀNG 7: Chỉnh Size TP
 local decreaseSizeButton = Instance.new("TextButton")
-decreaseSizeButton.Size = UDim2.new(0, 72, 0, 25); decreaseSizeButton.Position = UDim2.new(0, 5, 0, 165)
+decreaseSizeButton.Size = UDim2.new(0, 72, 0, 25); decreaseSizeButton.Position = UDim2.new(0, 5, 0, 190)
 decreaseSizeButton.BackgroundColor3 = Color3.fromRGB(80, 20, 20); decreaseSizeButton.TextColor3 = Color3.new(1, 1, 1)
 decreaseSizeButton.Font = Enum.Font.SourceSansBold; decreaseSizeButton.Text = "TP Size:-"; decreaseSizeButton.Parent = frame
 Instance.new("UICorner", decreaseSizeButton).CornerRadius = UDim.new(0, 4)
 
 local increaseSizeButton = Instance.new("TextButton")
-increaseSizeButton.Size = UDim2.new(0, 72, 0, 25); increaseSizeButton.Position = UDim2.new(0, 83, 0, 165)
+increaseSizeButton.Size = UDim2.new(0, 72, 0, 25); increaseSizeButton.Position = UDim2.new(0, 83, 0, 190)
 increaseSizeButton.BackgroundColor3 = Color3.fromRGB(20, 80, 20); increaseSizeButton.TextColor3 = Color3.new(1, 1, 1)
 increaseSizeButton.Font = Enum.Font.SourceSansBold; increaseSizeButton.Text = "TP Size:+"; increaseSizeButton.Parent = frame
 Instance.new("UICorner", increaseSizeButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 6: Chỉnh Size SAFE
+-- HÀNG 8: Chỉnh Size SAFE
 local decreaseSafeSizeBtn = Instance.new("TextButton")
-decreaseSafeSizeBtn.Size = UDim2.new(0, 72, 0, 25); decreaseSafeSizeBtn.Position = UDim2.new(0, 5, 0, 195)
+decreaseSafeSizeBtn.Size = UDim2.new(0, 72, 0, 25); decreaseSafeSizeBtn.Position = UDim2.new(0, 5, 0, 220)
 decreaseSafeSizeBtn.BackgroundColor3 = Color3.fromRGB(100, 60, 0); decreaseSafeSizeBtn.TextColor3 = Color3.new(1, 1, 1)
 decreaseSafeSizeBtn.Font = Enum.Font.SourceSansBold; decreaseSafeSizeBtn.Text = "SF Size:-"; decreaseSafeSizeBtn.Parent = frame
 Instance.new("UICorner", decreaseSafeSizeBtn).CornerRadius = UDim.new(0, 4)
 
 local increaseSafeSizeBtn = Instance.new("TextButton")
-increaseSafeSizeBtn.Size = UDim2.new(0, 72, 0, 25); increaseSafeSizeBtn.Position = UDim2.new(0, 83, 0, 195)
+increaseSafeSizeBtn.Size = UDim2.new(0, 72, 0, 25); increaseSafeSizeBtn.Position = UDim2.new(0, 83, 0, 220)
 increaseSafeSizeBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 0); increaseSafeSizeBtn.TextColor3 = Color3.new(1, 1, 1)
 increaseSafeSizeBtn.Font = Enum.Font.SourceSansBold; increaseSafeSizeBtn.Text = "SF Size:+"; increaseSafeSizeBtn.Parent = frame
 Instance.new("UICorner", increaseSafeSizeBtn).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 7: NÚT ATK FLING (Bản Sửa Lỗi FE)
+-- HÀNG 9: NÚT ATK FLING 
 local flingButton = Instance.new("TextButton")
-flingButton.Size = UDim2.new(0, 150, 0, 25); flingButton.Position = UDim2.new(0, 5, 0, 225)
+flingButton.Size = UDim2.new(0, 150, 0, 25); flingButton.Position = UDim2.new(0, 5, 0, 250)
 flingButton.BackgroundColor3 = flingEnabled and Color3.fromRGB(200, 0, 200) or Color3.fromRGB(100, 0, 100)
 flingButton.TextColor3 = Color3.new(1, 1, 1); flingButton.Font = Enum.Font.SourceSansBold; flingButton.TextSize = 14
 flingButton.Text = flingEnabled and "Atk Fling: ON" or "Atk Fling: OFF"; flingButton.Parent = frame
 Instance.new("UICorner", flingButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 8: Nút Thu nhỏ
+-- HÀNG 10: Nút Thu nhỏ
 local minimizeButton = Instance.new("TextButton")
-minimizeButton.Size = UDim2.new(0, 150, 0, 25); minimizeButton.Position = UDim2.new(0, 5, 0, 255)
+minimizeButton.Size = UDim2.new(0, 150, 0, 25); minimizeButton.Position = UDim2.new(0, 5, 0, 280)
 minimizeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50); minimizeButton.TextColor3 = Color3.new(1, 1, 1)
 minimizeButton.Text = "Thu nhỏ (-)"; minimizeButton.Parent = frame
 Instance.new("UICorner", minimizeButton).CornerRadius = UDim.new(0, 4)
@@ -291,12 +299,41 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
+-- LOGIC NÚT BẤM SPEED
 decreaseButton.MouseButton1Click:Connect(function() 
     if speedValue > 16 then speedValue = speedValue - 5; speedLabel.Text = "Speed: "..speedValue; MySettings.speedValue = speedValue; SaveConfig() end 
 end)
 
 increaseButton.MouseButton1Click:Connect(function() 
     if speedValue < 500 then speedValue = speedValue + 5; speedLabel.Text = "Speed: "..speedValue; MySettings.speedValue = speedValue; SaveConfig() end 
+end)
+
+speedToggleButton.MouseButton1Click:Connect(function()
+    speedEnabled = not speedEnabled
+    speedToggleButton.Text = speedEnabled and "Speed: ON" or "Speed: OFF"
+    speedToggleButton.BackgroundColor3 = speedEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 255)
+    MySettings.speedEnabled = speedEnabled
+    SaveConfig()
+end)
+
+-- VÒNG LẶP WALK SPEED
+local wasSpeedOn = false
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        pcall(function() 
+            local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                if speedEnabled then
+                    humanoid.WalkSpeed = speedValue 
+                    wasSpeedOn = true
+                elseif wasSpeedOn then
+                    humanoid.WalkSpeed = 16 -- Tự động trả về tốc độ chạy bình thường của game khi bấm OFF
+                    wasSpeedOn = false
+                end
+            end
+        end)
+    end
 end)
 
 jumpButton.MouseButton1Click:Connect(function() 
@@ -556,13 +593,6 @@ openButton.MouseButton1Click:Connect(function() openButton.Visible = false; fram
 
 game:GetService("UserInputService").JumpRequest:Connect(function()
     if infiniteJumpEnabled then pcall(function() LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end) end
-end)
-
-task.spawn(function()
-    while true do
-        pcall(function() LocalPlayer.Character.Humanoid.WalkSpeed = speedValue end)
-        task.wait(0.1)
-    end
 end)
 
 checkSafePlatform(); updateESPStatus()
