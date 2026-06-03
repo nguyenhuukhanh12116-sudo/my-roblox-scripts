@@ -64,6 +64,7 @@ local tpSizeValue = MySettings.tpSizeValue
 local safeSizeValue = MySettings.safeSizeValue
 local safePart = nil 
 local espObjects = {}
+local squareTpActive = false -- Biến trạng thái bật/tắt cho nút TP ngoài màn hình
 
 -- Create GUI
 local gui = Instance.new("ScreenGui")
@@ -187,7 +188,7 @@ safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"
 safeButton.Parent = frame
 Instance.new("UICorner", safeButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 2: Nút TP & Nút bật/tắt nút Safe màn hình (ĐÃ CẬP NHẬT)
+-- HÀNG 2: Nút TP & Nút bật/tắt nút Safe màn hình
 local tpButton = Instance.new("TextButton")
 tpButton.Size = UDim2.new(0, 72, 0, 25)
 tpButton.Position = UDim2.new(0, 5, 0, 75)
@@ -367,7 +368,6 @@ end
 
 setupSquareDrag(tpSquare, "tpSquare")
 setupSquareDrag(safeSquare, "safeSquare")
-
 local function getClosestPlayer()
     local closestPlayer = nil; local shortestDistance = math.huge
     local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -455,7 +455,7 @@ safeButton.MouseButton1Click:Connect(function()
     MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform()
 end)
 
--- SỰ KIỆN BẬT TẮT NÚT SAFE MÀN HÌNH (MỚI)
+-- SỰ KIỆN BẬT TẮT NÚT SAFE MÀN HÌNH
 showSafeBtn.MouseButton1Click:Connect(function()
     showSafeSquare = not showSafeSquare
     showSafeBtn.Text = showSafeSquare and "BtnSF:ON" or "BtnSF:OFF"
@@ -465,7 +465,7 @@ showSafeBtn.MouseButton1Click:Connect(function()
 end)
 
 safeSquare.MouseButton1Click:Connect(function()
-    if safeEnabled and not squareDragging and safePart then
+    if safeEnabled and safePart then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end
     end
@@ -488,6 +488,13 @@ tpaButton.MouseButton1Click:Connect(function()
     tpaButton.Text = tpaEnabled and "TPA: ON" or "TPA: OFF"
     tpaButton.BackgroundColor3 = tpaEnabled and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(0, 0, 0)
     tpSquare.Visible = tpaEnabled
+    
+    -- Tự động reset nút ngoài màn hình về màu đỏ nếu tắt menu TPA
+    if not tpaEnabled then
+        squareTpActive = false
+        tpSquare.Text = "TP"
+        tpSquare.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    end
     MySettings.tpaEnabled = tpaEnabled; SaveConfig()
 end)
 
@@ -498,16 +505,34 @@ moveButton.MouseButton1Click:Connect(function()
     MySettings.moveEnabled = moveEnabled; SaveConfig()
 end)
 
+-- SỬA ĐỔI: Nút TP vuông ngoài màn hình khi nhấn sẽ bật/tắt chế độ liên tục (On/Off)
 tpSquare.MouseButton1Click:Connect(function()
-    if tpaEnabled and not squareDragging then 
-        pcall(function()
-            local targetPlayer = getClosestPlayer()
-            local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if targetPlayer and myHrp then
-                local targetHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if targetHrp then myHrp.CFrame = targetHrp.CFrame end
-            end
-        end)
+    if tpaEnabled then 
+        squareTpActive = not squareTpActive
+        if squareTpActive then
+            tpSquare.Text = "TP: ON"
+            tpSquare.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Đổi sang màu xanh khi bật liên tục
+        else
+            tpSquare.Text = "TP"
+            tpSquare.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Màu đỏ khi tắt
+        end
+    end
+end)
+
+-- VÒNG LẶP LIÊN TỤC CHO NÚT TP NGOÀI MÀN HÌNH
+task.spawn(function()
+    while true do
+        task.wait(0.01)
+        if tpaEnabled and squareTpActive then
+            pcall(function()
+                local targetPlayer = getClosestPlayer()
+                local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                if targetPlayer and myHrp then
+                    local targetHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if targetHrp then myHrp.CFrame = targetHrp.CFrame end
+                end
+            end)
+        end
     end
 end)
 
@@ -526,7 +551,7 @@ local function createESP(player)
 
         local nameLabel = Instance.new("TextLabel"); nameLabel.Size = UDim2.new(1, 0, 1, 0)
         nameLabel.BackgroundTransparency = 1; nameLabel.Text = player.Name
-        nameLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- ĐÃ SỬA THÀNH MÀU ĐỎ VÀ XÓA HOÀN TOÀN TRACER DÂY
+        nameLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
         nameLabel.TextStrokeTransparency = 0; nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
         nameLabel.Font = Enum.Font.SourceSansBold; nameLabel.TextSize = 18; nameLabel.Parent = billboard
 
