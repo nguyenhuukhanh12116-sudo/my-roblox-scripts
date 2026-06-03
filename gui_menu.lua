@@ -59,7 +59,7 @@ local safeSizeValue = MySettings.safeSizeValue
 local safePart = nil 
 local espObjects = {}
 local squareTpActive = false 
-local isAttacking = false -- Biến kiểm tra trạng thái đang vung đòn tấn công
+local isAttacking = false -- Trạng thái vung đòn
 
 -- Create GUI
 local gui = Instance.new("ScreenGui")
@@ -172,7 +172,7 @@ local espButton = Instance.new("TextButton")
 espButton.Size = UDim2.new(0, 150, 0, 25); espButton.Position = UDim2.new(0, 5, 0, 105)
 espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 150, 255)
 espButton.TextColor3 = Color3.new(1, 1, 1); espButton.Font = Enum.Font.SourceSansBold; espButton.TextSize = 14
-espButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"; espButton.Parent = frame
+espButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"; frame.Active = true; espButton.Parent = frame
 Instance.new("UICorner", espButton).CornerRadius = UDim.new(0, 4)
 
 -- HÀNG 4: TPA & Move
@@ -216,7 +216,7 @@ increaseSafeSizeBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 0); increaseSafe
 increaseSafeSizeBtn.Font = Enum.Font.SourceSansBold; increaseSafeSizeBtn.Text = "SF Size:+"; increaseSafeSizeBtn.Parent = frame
 Instance.new("UICorner", increaseSafeSizeBtn).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 7: NÚT ATK FLING (Tấn công hất tung)
+-- HÀNG 7: NÚT ATK FLING (Bản Sửa Lỗi RNG)
 local flingButton = Instance.new("TextButton")
 flingButton.Size = UDim2.new(0, 150, 0, 25); flingButton.Position = UDim2.new(0, 5, 0, 225)
 flingButton.BackgroundColor3 = flingEnabled and Color3.fromRGB(200, 0, 200) or Color3.fromRGB(100, 0, 100)
@@ -401,7 +401,7 @@ task.spawn(function()
     end
 end)
 
--- LOGIC KIỂM TRA CLICK CHUỘT / VUNG VŨ KHÍ ĐỂ FLING
+-- HỆ THỐNG PHÁT HIỆN TẤN CÔNG (VUNG GLOVE / VŨ KHÍ TRONG RNG BATTLES)
 local toolConnection = nil
 local function trackWeapon(character)
     if toolConnection then toolConnection:Disconnect() end
@@ -410,7 +410,7 @@ local function trackWeapon(character)
             child.Activated:Connect(function()
                 if flingEnabled and not isAttacking then
                     isAttacking = true
-                    task.wait(0.3) -- Duy trì lực hất tung trong 0.3 giây khi vung vũ khí
+                    task.wait(0.3) -- Kích hoạt xung lực văng trong 0.3s
                     isAttacking = false
                 end
             end)
@@ -418,7 +418,6 @@ local function trackWeapon(character)
     end)
 end
 
--- Lắng nghe cả hành động click chuột tự do từ người chơi (Phòng trường hợp vũ khí dạng Script ẩn)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and flingEnabled then
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -438,38 +437,56 @@ flingButton.MouseButton1Click:Connect(function()
     MySettings.flingEnabled = flingEnabled; SaveConfig()
 end)
 
--- VÒNG LẶP ĐẨY LỰC KHI ĐANG TẤN CÔNG (CanCollide bypass)
-RunService.Stepped:Connect(function()
+-- VÒNG LẶP BULLET FLING CAO CẤP: CHỐNG TỰ FLING BẢN THÂN TUYỆT ĐỐI
+local currentFlingPart = nil
+
+RunService.Heartbeat:Connect(function()
     if flingEnabled and isAttacking then
         pcall(function()
             local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                for _, v in pairs(char:GetChildren()) do
-                    if v:IsA("BasePart") then v.CanCollide = true end
+            local target = getClosestPlayer()
+            if char and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local myHrp = char:FindFirstChild("HumanoidRootPart")
+                local targetHrp = target.Character.HumanoidRootPart
+                
+                -- Chỉ kích hoạt khi đối thủ ở trong phạm vi chiến đấu (Dưới 25 Studs)
+                if myHrp and (myHrp.Position - targetHrp.Position).Magnitude < 25 then
+                    if not currentFlingPart or not currentFlingPart.Parent then
+                        currentFlingPart = Instance.new("Part")
+                        currentFlingPart.Size = Vector3.new(5, 5, 5)
+                        currentFlingPart.Transparency = 1 -- Hoàn toàn tàng hình
+                        currentFlingPart.CanCollide = true
+                        currentFlingPart.Massless = true
+                        currentFlingPart.Name = "RNG_FlingBullet"
+                        currentFlingPart.Parent = workspace
+                        
+                        -- KHÓA CHỐNG TỰ FLING: Cấm va chạm khối này với chính bạn
+                        for _, bodyPart in pairs(char:GetChildren()) do
+                            if bodyPart:IsA("BasePart") then
+                                local nc = Instance.new("NoCollisionConstraint")
+                                nc.Part0 = currentFlingPart
+                                nc.Part1 = bodyPart
+                                nc.Parent = currentFlingPart
+                            end
+                        end
+                    end
+                    -- Ghim thẳng khối xung lực vào mục tiêu và phóng đại vận tốc để thổi bay họ
+                    currentFlingPart.CFrame = targetHrp.CFrame
+                    currentFlingPart.Velocity = Vector3.new(0, 80000, 0)
+                    currentFlingPart.RotVelocity = Vector3.new(80000, 80000, 80000)
                 end
-                -- Tạo vận tốc hất văng cực mạnh lên cao
-                char.HumanoidRootPart.Velocity = Vector3.new(0, 60000, 0)
-                char.HumanoidRootPart.RotVelocity = Vector3.new(60000, 60000, 60000)
             end
         end)
+    else
+        -- Dọn dẹp rác vật thể khi ngưng đánh để tránh lag game
+        if currentFlingPart then
+            pcall(function() currentFlingPart:Destroy() end)
+            currentFlingPart = nil
+        end
     end
 end)
 
-RunService.Heartbeat:Connect(function()
-    if flingEnabled then
-        pcall(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                -- Nếu không trong trạng thái vung đòn, ghim cơ thể đứng yên ổn định
-                if not isAttacking then
-                    char.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-                    char.HumanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
-                end
-            end
-        end)
-    end
-end)
-
+-- KHỞI TẠO CÁC CHỨC NĂNG PHỤ TRỢ KHÁC (ESP, TP NEAREST,...)
 local function createESP(player)
     if player == LocalPlayer then return end
     local function applyESP(character)
