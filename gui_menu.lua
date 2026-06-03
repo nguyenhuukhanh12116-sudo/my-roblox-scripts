@@ -8,7 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
--- Khởi tạo bảng Settings mặc định (Bổ sung Chams và Hitbox)
+-- Khởi tạo bảng Settings mặc định
 local MySettings = {
     speedValue = 50,
     infiniteJumpEnabled = false,
@@ -18,8 +18,8 @@ local MySettings = {
     tpaEnabled = false,
     moveEnabled = false,
     showSafeSquare = true,
-    chamsEnabled = false,   -- Trạng thái nút Chams
-    hitboxEnabled = false,  -- Trạng thái nút Hitbox
+    chamsEnabled = false,   
+    hitboxEnabled = false,  
     tpSizeValue = 50,
     safeSizeValue = 50,
     tpSquareX_Scale = 0.5, tpSquareX_Offset = -55,
@@ -34,7 +34,7 @@ local function SaveConfig()
         return HttpService:JSONEncode(MySettings)
     end)
     if success and writefile then
-        writefile(SETTINGS_FILE, encoded)
+        pcall(function() writefile(SETTINGS_FILE, encoded) end)
     end
 end
 
@@ -52,7 +52,7 @@ local function LoadConfig()
     end
 end
 
-LoadConfig()
+pcall(LoadConfig)
 
 local safePart = nil 
 local espObjects = {}
@@ -64,7 +64,7 @@ gui.Name = "JNHHGamingCompact"
 gui.ResetOnSpawn = false 
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Bảng Main (Tăng chiều cao lên 290)
+-- Bảng Main
 local frame = Instance.new("Frame")
 frame.Name = "CompactFrame"
 frame.Size = UDim2.new(0, 160, 0, 290)
@@ -321,7 +321,7 @@ safeSquare.Text = "SAFE"; safeSquare.TextColor3 = Color3.new(0, 0, 0)
 safeSquare.Font = Enum.Font.SourceSansBold; safeSquare.TextSize = 14
 safeSquare.Visible = (MySettings.safeEnabled and MySettings.showSafeSquare); safeSquare.Active = true; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
 
--- HỆ THỐNG KÉO THẢ VÀ LƯU VỊ TRÍ
+-- HỆ THỐNG KÉO THẢ VÀ LƯU VỊ TRÍ NÚT VUÔNG
 local function setupSquareDrag(targetUi, settingPrefix)
     local dragging = false; local dragInput, dragStart, startPos; local touchObject = nil
     targetUi.InputBegan:Connect(function(input)
@@ -394,7 +394,7 @@ increaseSafeSizeBtn.MouseButton1Click:Connect(function()
     if MySettings.safeSizeValue < 150 then MySettings.safeSizeValue = MySettings.safeSizeValue + 10; safeSquare.Size = UDim2.new(0, MySettings.safeSizeValue, 0, MySettings.safeSizeValue); SaveConfig() end
 end)
 
--- LOGIC SAFE PLATFORM (ĐÃ SỬA LỖI else if)
+-- LOGIC SAFE PLATFORM
 local function checkSafePlatform()
     if MySettings.safeEnabled then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -404,7 +404,7 @@ local function checkSafePlatform()
             safePart.Anchored = true; safePart.BrickColor = BrickColor.new("White"); safePart.Parent = workspace
             hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0))
         end
-    elseif safePart then -- Sửa từ "else if" thành "elseif"
+    elseif safePart then 
         safePart:Destroy()
         safePart = nil 
     end
@@ -413,7 +413,7 @@ end
 safeButton.MouseButton1Click:Connect(function()
     MySettings.safeEnabled = not MySettings.safeEnabled; safeButton.Text = MySettings.safeEnabled and "Safe: ON" or "Safe: OFF"
     safeButton.BackgroundColor3 = MySettings.safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
-    safeSquare.Visible = (MySettings.safeEnabled and MySettings.showSafeSquare); SaveConfig(); checkSafePlatform()
+    safeSquare.Visible = (MySettings.safeEnabled and MySettings.showSafeSquare); SaveConfig(); pcall(checkSafePlatform)
 end)
 showSafeBtn.MouseButton1Click:Connect(function()
     MySettings.showSafeSquare = not MySettings.showSafeSquare; showSafeBtn.Text = MySettings.showSafeSquare and "BtnSF:ON" or "BtnSF:OFF"
@@ -477,7 +477,7 @@ local function removeChams() for p, h in pairs(chamsObjects) do if h and h.Paren
 local function updateChamsStatus() if MySettings.chamsEnabled then for _, p in pairs(Players:GetPlayers()) do createChams(p) end else removeChams() end end
 chamsButton.MouseButton1Click:Connect(function() MySettings.chamsEnabled = not MySettings.chamsEnabled; chamsButton.Text = MySettings.chamsEnabled and "Chams:ON" or "Chams:OFF"; chamsButton.BackgroundColor3 = MySettings.chamsEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(150, 0, 255); SaveConfig(); updateChamsStatus() end)
 
--- HỆ THỐNG VÒNG LẶP XỬ LÝ NGẦM
+-- HỆ THỐNG VÒNG LẶP SỬ LÝ NGẦM
 hitboxButton.MouseButton1Click:Connect(function()
     MySettings.hitboxEnabled = not MySettings.hitboxEnabled; hitboxButton.Text = MySettings.hitboxEnabled and "Box: ON" or "Box: OFF"
     hitboxButton.BackgroundColor3 = MySettings.hitboxEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 0, 100)
@@ -492,8 +492,7 @@ end)
 
 task.spawn(function()
     while true do
-        task.wait(0.2) -- Tối ưu 0.2 giây để tránh làm giảm FPS của game
-        -- Quản lý kích thước Hitbox của địch
+        task.wait(0.2)
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character then
                 local hrp = p.Character:FindFirstChild("HumanoidRootPart")
@@ -512,7 +511,6 @@ task.spawn(function()
                 end
             end
         end
-        -- Tự động TP liên tục nếu bật TP Gần nhất
         if MySettings.tpNearestEnabled then
             pcall(function()
                 local targetPlayer = getClosestPlayer(); local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -534,12 +532,11 @@ end)
 
 Players.PlayerAdded:Connect(function(p) if MySettings.espEnabled then createESP(p) end; if MySettings.chamsEnabled then createChams(p) end end)
 Players.PlayerRemoving:Connect(function(p) if espObjects[p] then if espObjects[p].Billboard then espObjects[p].Billboard:Destroy() end; espObjects[p] = nil end; if chamsObjects[p] then chamsObjects[p]:Destroy(); chamsObjects[p] = nil end end)
-LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5); checkSafePlatform(); updateESPStatus(); updateChamsStatus() end)
+LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5); pcall(checkSafePlatform); updateESPStatus(); updateChamsStatus() end)
 minimizeButton.MouseButton1Click:Connect(function() frame.Visible = false; openButton.Position = frame.Position; openButton.Visible = true end)
 openButton.MouseButton1Click:Connect(function() openButton.Visible = false; frame.Position = openButton.Position; frame.Visible = true end)
 UserInputService.JumpRequest:Connect(function() if MySettings.infiniteJumpEnabled then pcall(function() LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end) end)
 
--- Quản lý WalkSpeed mượt mà hơn
 task.spawn(function()
     while true do 
         pcall(function() 
@@ -551,5 +548,9 @@ task.spawn(function()
     end 
 end)
 
-checkSafePlatform(); updateESPStatus(); updateChamsStatus()
+pcall(function()
+    checkSafePlatform()
+    updateESPStatus()
+    updateChamsStatus()
+end)
     
