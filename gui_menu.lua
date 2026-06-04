@@ -249,11 +249,12 @@ tpSquare.BackgroundColor3 = Color3.fromRGB(255, 0, 0); tpSquare.Text = "TP"
 tpSquare.TextColor3 = Color3.new(1, 1, 1); tpSquare.Font = Enum.Font.SourceSansBold; tpSquare.TextSize = 16
 tpSquare.Visible = tpaEnabled; tpSquare.Active = true; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
 
--- TẠO NÚT VUÔNG SAFE
+-- TẠO NÚT VUÔNG SAFE (Đã thêm logic nhận diện ON/OFF ban đầu)
 local safeSquare = Instance.new("TextButton")
 safeSquare.Name = "SafeSquareButton"; safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue)
 safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset) 
-safeSquare.BackgroundColor3 = Color3.fromRGB(255, 200, 0); safeSquare.Text = "SAFE"
+safeSquare.BackgroundColor3 = safeEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 200, 0)
+safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"
 safeSquare.TextColor3 = Color3.new(0, 0, 0); safeSquare.Font = Enum.Font.SourceSansBold; safeSquare.TextSize = 14
 safeSquare.Visible = showSafeSquare; safeSquare.Active = true; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
 
@@ -381,13 +382,27 @@ local function checkSafePlatform()
     end
 end
 
+-- LOGIC ĐỒNG BỘ: KHI BẤM NÚT TRONG MENU
 safeButton.MouseButton1Click:Connect(function()
-    safeEnabled = not safeEnabled; safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"
+    safeEnabled = not safeEnabled
+    
+    -- Đổi nút trong Menu
+    safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"
     safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
+    
+    -- Đồng bộ luôn màu nút Vuông ở ngoài
+    if safeEnabled then
+        safeSquare.Text = "SF: ON"
+        safeSquare.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    else
+        safeSquare.Text = "SAFE"
+        safeSquare.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+    end
+
     MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform()
 end)
 
--- BẬT/TẮT NÚT VUÔNG SAFE (Ẩn hiện độc lập chuẩn yêu cầu)
+-- BẬT/TẮT ẨN HIỆN NÚT VUÔNG SAFE
 showSafeBtn.MouseButton1Click:Connect(function()
     showSafeSquare = not showSafeSquare; showSafeBtn.Text = showSafeSquare and "BtnSF:ON" or "BtnSF:OFF"
     showSafeBtn.BackgroundColor3 = showSafeSquare and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
@@ -395,17 +410,33 @@ showSafeBtn.MouseButton1Click:Connect(function()
     MySettings.showSafeSquare = showSafeSquare; SaveConfig()
 end)
 
+-- LOGIC ĐỒNG BỘ: KHI BẤM NÚT VUÔNG Ở NGOÀI
 safeSquare.MouseButton1Click:Connect(function()
-    if not safeEnabled or not safePart or not safePart.Parent then
-        safeEnabled = true; safeButton.Text = "Safe: ON"
-        safeButton.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-        MySettings.safeEnabled = safeEnabled; SaveConfig()
-        checkSafePlatform()
-        task.wait(0.05)
+    safeEnabled = not safeEnabled
+    
+    -- Đồng bộ màu nút trong Menu
+    safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"
+    safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
+    
+    -- Đổi màu chữ nút Vuông chính nó
+    if safeEnabled then
+        safeSquare.Text = "SF: ON"
+        safeSquare.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Xanh lá khi ON
+    else
+        safeSquare.Text = "SAFE"
+        safeSquare.BackgroundColor3 = Color3.fromRGB(255, 200, 0) -- Vàng khi OFF
     end
-    if safePart then
-        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end
+    
+    MySettings.safeEnabled = safeEnabled; SaveConfig()
+    checkSafePlatform()
+    
+    -- Nếu vừa BẬT lên, teleport ngay lập tức
+    if safeEnabled then
+        task.wait(0.05)
+        if safePart then
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end
+        end
     end
 end)
 
