@@ -63,6 +63,7 @@ local espObjects = {}
 local squareTpActive = false 
 local isAttacking = false 
 local oldCFrame = nil 
+local originalGameSpeed = 16
 
 -- Create GUI
 local gui = Instance.new("ScreenGui")
@@ -102,7 +103,7 @@ local function makeDraggable(uiInstance)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not dragging then
             dragging = true; currentTouchObject = input; dragStart = input.Position; startPos = uiInstance.Position
             input.Changed:Connect(function()
-                if input.UserInputState = = Enum.UserInputState.End then dragging = false; currentTouchObject = nil end
+                if input.UserInputState == Enum.UserInputState.End then dragging = false; currentTouchObject = nil end
             end)
         end
     end)
@@ -248,7 +249,7 @@ tpSquare.BackgroundColor3 = Color3.fromRGB(255, 0, 0); tpSquare.Text = "TP"
 tpSquare.TextColor3 = Color3.new(1, 1, 1); tpSquare.Font = Enum.Font.SourceSansBold; tpSquare.TextSize = 16
 tpSquare.Visible = tpaEnabled; tpSquare.Active = true; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
 
--- TẠO NÚT VUÔNG SAFE (FIX: Chỉ phụ thuộc hoàn toàn vào trạng thái showSafeSquare)
+-- TẠO NÚT VUÔNG SAFE
 local safeSquare = Instance.new("TextButton")
 safeSquare.Name = "SafeSquareButton"; safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue)
 safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset) 
@@ -285,6 +286,8 @@ local function setupSquareDrag(targetUi, settingPrefix)
     end)
 end
 setupSquareDrag(tpSquare, "tpSquare"); setupSquareDrag(safeSquare, "safeSquare")
+
+-- LOGIC CHỨC NĂNG
 local function getClosestPlayer()
     local closestPlayer = nil; local shortestDistance = math.huge
     local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -299,9 +302,6 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- Biến lưu trữ tốc độ gốc của game
-local originalGameSpeed = 16
-
 decreaseButton.MouseButton1Click:Connect(function() 
     if speedValue > 16 then speedValue = speedValue - 5; speedLabel.Text = "Speed: "..speedValue; MySettings.speedValue = speedValue; SaveConfig() end 
 end)
@@ -310,7 +310,7 @@ increaseButton.MouseButton1Click:Connect(function()
     if speedValue < 500 then speedValue = speedValue + 5; speedLabel.Text = "Speed: "..speedValue; MySettings.speedValue = speedValue; SaveConfig() end 
 end)
 
--- LOGIC BẬT TẮT SPEED (FIX: Khôi phục chuẩn tốc độ gốc của game khi OFF)
+-- BẬT/TẮT SPEED (Trả về tốc độ gốc chuẩn của game)
 speedToggleButton.MouseButton1Click:Connect(function()
     speedEnabled = not speedEnabled
     speedToggleButton.Text = speedEnabled and "Speed: ON" or "Speed: OFF"
@@ -322,20 +322,18 @@ speedToggleButton.MouseButton1Click:Connect(function()
         local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
         if humanoid then
             if speedEnabled then
-                -- Trước khi bật hack, ghi lại tốc độ hiện tại của game đang chạy
                 if humanoid.WalkSpeed ~= speedValue then
                     originalGameSpeed = humanoid.WalkSpeed
                 end
                 humanoid.WalkSpeed = speedValue
             else
-                -- Khi tắt hack, trả lại chính xác tốc độ mà game đang có
                 humanoid.WalkSpeed = originalGameSpeed
             end
         end
     end)
 end)
 
--- VÒNG LẶP ÉP SPEED (FIX: Khi OFF sẽ ngắt hoàn toàn, không đè dữ liệu)
+-- Vòng lặp ép tốc độ (Chỉ hoạt động khi ON, OFF tắt hẳn)
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -389,7 +387,7 @@ safeButton.MouseButton1Click:Connect(function()
     MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform()
 end)
 
--- NÚT BẬT TẮT NÚT VUÔNG TRÊN MÀN HÌNH (FIX: Độc lập hoàn toàn)
+-- BẬT/TẮT NÚT VUÔNG SAFE (Ẩn hiện độc lập chuẩn yêu cầu)
 showSafeBtn.MouseButton1Click:Connect(function()
     showSafeSquare = not showSafeSquare; showSafeBtn.Text = showSafeSquare and "BtnSF:ON" or "BtnSF:OFF"
     showSafeBtn.BackgroundColor3 = showSafeSquare and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
@@ -398,7 +396,6 @@ showSafeBtn.MouseButton1Click:Connect(function()
 end)
 
 safeSquare.MouseButton1Click:Connect(function()
-    -- Nếu chưa bật nền Safe, tự động tạo base luôn khi bấm nút vuông ngoài màn hình
     if not safeEnabled or not safePart or not safePart.Parent then
         safeEnabled = true; safeButton.Text = "Safe: ON"
         safeButton.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
@@ -406,7 +403,6 @@ safeSquare.MouseButton1Click:Connect(function()
         checkSafePlatform()
         task.wait(0.05)
     end
-    
     if safePart then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end
@@ -598,7 +594,6 @@ end)
 
 LocalPlayer.CharacterAdded:Connect(function(char) 
     task.wait(0.5); checkSafePlatform(); updateESPStatus(); trackWeapon(char) 
-    -- Nếu hồi sinh mà Speed đang OFF thì lấy tốc độ mặc định mới của game làm chuẩn gốc
     if not speedEnabled then
         pcall(function() originalGameSpeed = char:WaitForChild("Humanoid").WalkSpeed end)
     end
@@ -612,7 +607,7 @@ end
 minimizeButton.MouseButton1Click:Connect(function() frame.Visible = false; openButton.Position = frame.Position; openButton.Visible = true end)
 openButton.MouseButton1Click:Connect(function() openButton.Visible = false; frame.Position = openButton.Position; frame.Visible = true end)
 
-game:GetService("UserInputService").JumpRequest:Connect(function()
+UserInputService.JumpRequest:Connect(function()
     if infiniteJumpEnabled then pcall(function() LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end) end
 end)
 
