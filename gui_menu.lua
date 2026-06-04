@@ -11,7 +11,7 @@ local HttpService = game:GetService("HttpService")
 -- Khởi tạo bảng Settings mặc định
 local MySettings = {
     speedValue = 50,
-    speedEnabled = false, -- Thêm trạng thái Bật/Tắt Speed
+    speedEnabled = false, 
     infiniteJumpEnabled = false,
     safeEnabled = false,
     tpNearestEnabled = false,
@@ -70,7 +70,7 @@ gui.Name = "JNHHGamingCompact"
 gui.ResetOnSpawn = false 
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Bảng Main (Đã tăng chiều cao để chứa nút mới)
+-- Bảng Main
 local frame = Instance.new("Frame")
 frame.Name = "CompactFrame"
 frame.Size = UDim2.new(0, 160, 0, 315)
@@ -102,7 +102,7 @@ local function makeDraggable(uiInstance)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not dragging then
             dragging = true; currentTouchObject = input; dragStart = input.Position; startPos = uiInstance.Position
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false; currentTouchObject = nil end
+                if input.UserInputState = = Enum.UserInputState.End then dragging = false; currentTouchObject = nil end
             end)
         end
     end)
@@ -161,7 +161,7 @@ safeButton.TextColor3 = Color3.new(0, 0, 0); safeButton.Font = Enum.Font.SourceS
 safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"; safeButton.Parent = frame
 Instance.new("UICorner", safeButton).CornerRadius = UDim.new(0, 4)
 
--- HÀNG 4: TP & Nút bật/tắt nút Safe
+-- HÀNG 4: TP & Nút bật/tắt nút Safe ở ngoài
 local tpButton = Instance.new("TextButton")
 tpButton.Size = UDim2.new(0, 72, 0, 25); tpButton.Position = UDim2.new(0, 5, 0, 100)
 tpButton.BackgroundColor3 = tpNearestEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 100, 0)
@@ -248,13 +248,13 @@ tpSquare.BackgroundColor3 = Color3.fromRGB(255, 0, 0); tpSquare.Text = "TP"
 tpSquare.TextColor3 = Color3.new(1, 1, 1); tpSquare.Font = Enum.Font.SourceSansBold; tpSquare.TextSize = 16
 tpSquare.Visible = tpaEnabled; tpSquare.Active = true; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
 
--- TẠO NÚT VUÔNG SAFE
+-- TẠO NÚT VUÔNG SAFE (FIX: Chỉ phụ thuộc hoàn toàn vào trạng thái showSafeSquare)
 local safeSquare = Instance.new("TextButton")
 safeSquare.Name = "SafeSquareButton"; safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue)
 safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset) 
 safeSquare.BackgroundColor3 = Color3.fromRGB(255, 200, 0); safeSquare.Text = "SAFE"
 safeSquare.TextColor3 = Color3.new(0, 0, 0); safeSquare.Font = Enum.Font.SourceSansBold; safeSquare.TextSize = 14
-safeSquare.Visible = (safeEnabled and showSafeSquare); safeSquare.Active = true; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
+safeSquare.Visible = showSafeSquare; safeSquare.Active = true; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
 
 -- HỆ THỐNG KÉO THẢ NÚT VUÔNG
 local function setupSquareDrag(targetUi, settingPrefix)
@@ -299,7 +299,9 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- LOGIC NÚT BẤM SPEED
+-- Biến lưu trữ tốc độ gốc của game
+local originalGameSpeed = 16
+
 decreaseButton.MouseButton1Click:Connect(function() 
     if speedValue > 16 then speedValue = speedValue - 5; speedLabel.Text = "Speed: "..speedValue; MySettings.speedValue = speedValue; SaveConfig() end 
 end)
@@ -308,31 +310,43 @@ increaseButton.MouseButton1Click:Connect(function()
     if speedValue < 500 then speedValue = speedValue + 5; speedLabel.Text = "Speed: "..speedValue; MySettings.speedValue = speedValue; SaveConfig() end 
 end)
 
+-- LOGIC BẬT TẮT SPEED (FIX: Khôi phục chuẩn tốc độ gốc của game khi OFF)
 speedToggleButton.MouseButton1Click:Connect(function()
     speedEnabled = not speedEnabled
     speedToggleButton.Text = speedEnabled and "Speed: ON" or "Speed: OFF"
     speedToggleButton.BackgroundColor3 = speedEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 255)
     MySettings.speedEnabled = speedEnabled
     SaveConfig()
+    
+    pcall(function()
+        local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            if speedEnabled then
+                -- Trước khi bật hack, ghi lại tốc độ hiện tại của game đang chạy
+                if humanoid.WalkSpeed ~= speedValue then
+                    originalGameSpeed = humanoid.WalkSpeed
+                end
+                humanoid.WalkSpeed = speedValue
+            else
+                -- Khi tắt hack, trả lại chính xác tốc độ mà game đang có
+                humanoid.WalkSpeed = originalGameSpeed
+            end
+        end
+    end)
 end)
 
--- VÒNG LẶP WALK SPEED
-local wasSpeedOn = false
+-- VÒNG LẶP ÉP SPEED (FIX: Khi OFF sẽ ngắt hoàn toàn, không đè dữ liệu)
 task.spawn(function()
     while true do
         task.wait(0.1)
-        pcall(function() 
-            local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-            if humanoid then
-                if speedEnabled then
+        if speedEnabled then
+            pcall(function() 
+                local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+                if humanoid then
                     humanoid.WalkSpeed = speedValue 
-                    wasSpeedOn = true
-                elseif wasSpeedOn then
-                    humanoid.WalkSpeed = 16 -- Tự động trả về tốc độ chạy bình thường của game khi bấm OFF
-                    wasSpeedOn = false
                 end
-            end
-        end)
+            end)
+        end
     end
 end)
 
@@ -372,18 +386,28 @@ end
 safeButton.MouseButton1Click:Connect(function()
     safeEnabled = not safeEnabled; safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"
     safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
-    safeSquare.Visible = (safeEnabled and showSafeSquare)
     MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform()
 end)
 
+-- NÚT BẬT TẮT NÚT VUÔNG TRÊN MÀN HÌNH (FIX: Độc lập hoàn toàn)
 showSafeBtn.MouseButton1Click:Connect(function()
     showSafeSquare = not showSafeSquare; showSafeBtn.Text = showSafeSquare and "BtnSF:ON" or "BtnSF:OFF"
     showSafeBtn.BackgroundColor3 = showSafeSquare and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
-    safeSquare.Visible = (safeEnabled and showSafeSquare); MySettings.showSafeSquare = showSafeSquare; SaveConfig()
+    safeSquare.Visible = showSafeSquare
+    MySettings.showSafeSquare = showSafeSquare; SaveConfig()
 end)
 
 safeSquare.MouseButton1Click:Connect(function()
-    if safeEnabled and safePart then
+    -- Nếu chưa bật nền Safe, tự động tạo base luôn khi bấm nút vuông ngoài màn hình
+    if not safeEnabled or not safePart or not safePart.Parent then
+        safeEnabled = true; safeButton.Text = "Safe: ON"
+        safeButton.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+        MySettings.safeEnabled = safeEnabled; SaveConfig()
+        checkSafePlatform()
+        task.wait(0.05)
+    end
+    
+    if safePart then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end
     end
@@ -439,7 +463,6 @@ task.spawn(function()
     end
 end)
 
--- HỆ THỐNG KÍCH HOẠT TRẠNG THÁI TẤN CÔNG (BLINK)
 local function triggerAttackBlink()
     if flingEnabled and not isAttacking then
         local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -447,16 +470,13 @@ local function triggerAttackBlink()
         
         if myHrp and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
             local targetHrp = target.Character.HumanoidRootPart
-            -- Chỉ kích hoạt khi mục tiêu ở gần phạm vi chiến đấu (Dưới 25 studs)
             if (myHrp.Position - targetHrp.Position).Magnitude < 25 then
-                oldCFrame = myHrp.CFrame -- Ghi nhớ vị trí cũ trước khi Blink
+                oldCFrame = myHrp.CFrame 
                 isAttacking = true
-                
-                task.wait(0.2) -- Chớp mắt tấn công phá physics đối thủ trong 0.2 giây
-                
+                task.wait(0.2) 
                 isAttacking = false
                 if oldCFrame then
-                    myHrp.CFrame = oldCFrame -- Trở về vị trí cũ an toàn
+                    myHrp.CFrame = oldCFrame 
                     myHrp.Velocity = Vector3.new(0, 0, 0)
                     myHrp.RotVelocity = Vector3.new(0, 0, 0)
                     oldCFrame = nil
@@ -470,9 +490,7 @@ local toolConnection = nil
 local function trackWeapon(character)
     if toolConnection then toolConnection:Disconnect() end
     toolConnection = character.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") then
-            child.Activated:Connect(triggerAttackBlink)
-        end
+        if child:IsA("Tool") then child.Activated:Connect(triggerAttackBlink) end
     end)
 end
 
@@ -491,7 +509,6 @@ flingButton.MouseButton1Click:Connect(function()
     MySettings.flingEnabled = flingEnabled; SaveConfig()
 end)
 
--- VÒNG LẶP HEARTBEAT - ÉP NHÂN VẬT THÀNH CON QUAY KHI ĐANG ATTACK ĐỂ HẤT ĐỐI THỦ
 RunService.Heartbeat:Connect(function()
     local char = LocalPlayer.Character
     local myHrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -502,14 +519,12 @@ RunService.Heartbeat:Connect(function()
             local target = getClosestPlayer()
             if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                 local targetHrp = target.Character.HumanoidRootPart
-                -- Teleport thẳng vào người đối thủ và xoay điên cuồng để hất văng họ
                 myHrp.CFrame = targetHrp.CFrame * CFrame.Angles(math.rad(math.random(0,360)), math.rad(math.random(0,360)), math.rad(math.random(0,360)))
                 myHrp.Velocity = Vector3.new(99999, 99999, 99999)
                 myHrp.RotVelocity = Vector3.new(99999, 99999, 99999)
             end
         end)
     else
-        -- Triệt tiêu lực thừa khi không tấn công để tránh tự fling
         if flingEnabled then
             myHrp.Velocity = Vector3.new(0, 0, 0)
             myHrp.RotVelocity = Vector3.new(0, 0, 0)
@@ -517,7 +532,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- KHỞI TẠO CÁC CHỨC NĂNG KHÁC (ESP, ĐỒNG BỘ...)
 local function createESP(player)
     if player == LocalPlayer then return end
     local function applyESP(character)
@@ -584,9 +598,16 @@ end)
 
 LocalPlayer.CharacterAdded:Connect(function(char) 
     task.wait(0.5); checkSafePlatform(); updateESPStatus(); trackWeapon(char) 
+    -- Nếu hồi sinh mà Speed đang OFF thì lấy tốc độ mặc định mới của game làm chuẩn gốc
+    if not speedEnabled then
+        pcall(function() originalGameSpeed = char:WaitForChild("Humanoid").WalkSpeed end)
+    end
 end)
 
-if LocalPlayer.Character then trackWeapon(LocalPlayer.Character) end
+if LocalPlayer.Character then 
+    trackWeapon(LocalPlayer.Character) 
+    pcall(function() originalGameSpeed = LocalPlayer.Character:WaitForChild("Humanoid").WalkSpeed end)
+end
 
 minimizeButton.MouseButton1Click:Connect(function() frame.Visible = false; openButton.Position = frame.Position; openButton.Visible = true end)
 openButton.MouseButton1Click:Connect(function() openButton.Visible = false; frame.Position = openButton.Position; frame.Visible = true end)
