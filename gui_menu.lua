@@ -1,110 +1,57 @@
--- Tên file lưu trữ trong thư mục workspace của Exploit
 local SETTINGS_FILE = "JNHHGaming_Config.json"
-
--- Các dịch vụ hệ thống cần dùng
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
--- Khởi tạo bảng Settings mặc định
 local MySettings = {
-    speedValue = 50,
-    speedEnabled = false, 
-    infiniteJumpEnabled = false,
-    safeEnabled = false,
-    tpNearestEnabled = false,
-    espEnabled = false,
-    tpaEnabled = false,
-    moveEnabled = false,
-    flingEnabled = false,
-    showSafeSquare = true,
-    tpSizeValue = 50,
-    safeSizeValue = 50,
-    tpSquareX_Scale = 0.5, tpSquareX_Offset = -55,
-    tpSquareY_Scale = 0.5, tpSquareY_Offset = -25,
-    safeSquareX_Scale = 0.5, safeSquareX_Offset = 5,
-    safeSquareY_Scale = 0.5, safeSquareY_Offset = -25
+    infiniteJumpEnabled = false, safeEnabled = false, tpNearestEnabled = false,
+    espEnabled = false, tpaEnabled = false, moveEnabled = false, flingEnabled = false,
+    showSafeSquare = true, tpSizeValue = 50, safeSizeValue = 50,
+    tpSquareX_Scale = 0.5, tpSquareX_Offset = -55, tpSquareY_Scale = 0.5, tpSquareY_Offset = -25,
+    safeSquareX_Scale = 0.5, safeSquareX_Offset = 5, safeSquareY_Scale = 0.5, safeSquareY_Offset = -25
 }
 
--- HÀM LƯU CONFIG
 local function SaveConfig()
-    local success, encoded = pcall(function() return HttpService:JSONEncode(MySettings) end)
-    if success and writefile then writefile(SETTINGS_FILE, encoded) end
+    local s, e = pcall(function() return HttpService:JSONEncode(MySettings) end)
+    if s and writefile then writefile(SETTINGS_FILE, e) end
 end
-
--- HÀM TẢI CONFIG
 local function LoadConfig()
     if readfile and isfile and isfile(SETTINGS_FILE) then
-        local success, decoded = pcall(function() return HttpService:JSONDecode(readfile(SETTINGS_FILE)) end)
-        if success and type(decoded) == "table" then
-            for k, v in pairs(decoded) do MySettings[k] = v end
-        end
+        local s, d = pcall(function() return HttpService:JSONDecode(readfile(SETTINGS_FILE)) end)
+        if s and type(d) == "table" then for k, v in pairs(d) do MySettings[k] = v end end
     end
 end
-
 LoadConfig()
 
-local speedValue = MySettings.speedValue
-local speedEnabled = MySettings.speedEnabled
-local infiniteJumpEnabled = MySettings.infiniteJumpEnabled
-local safeEnabled = MySettings.safeEnabled
-local tpNearestEnabled = MySettings.tpNearestEnabled
-local espEnabled = MySettings.espEnabled
-local tpaEnabled = MySettings.tpaEnabled
-local moveEnabled = MySettings.moveEnabled
-local flingEnabled = MySettings.flingEnabled
-local showSafeSquare = MySettings.showSafeSquare
-local tpSizeValue = MySettings.tpSizeValue
-local safeSizeValue = MySettings.safeSizeValue
-local safePart = nil 
-local espObjects = {}
-local squareTpActive = false 
-local isAttacking = false 
-local oldCFrame = nil 
-local originalGameSpeed = 16
+local infiniteJumpEnabled, safeEnabled, tpNearestEnabled = MySettings.infiniteJumpEnabled, MySettings.safeEnabled, MySettings.tpNearestEnabled
+local espEnabled, tpaEnabled, moveEnabled, flingEnabled = MySettings.espEnabled, MySettings.tpaEnabled, MySettings.moveEnabled, MySettings.flingEnabled
+local showSafeSquare, tpSizeValue, safeSizeValue = MySettings.showSafeSquare, MySettings.tpSizeValue, MySettings.safeSizeValue
+local safePart, espObjects, squareTpActive, isAttacking, oldCFrame = nil, {}, false, false, nil
 
--- Create GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "JNHHGamingCompact"
-gui.ResetOnSpawn = false 
-gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+gui.Name = "JNHHGamingCompact"; gui.ResetOnSpawn = false; gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Bảng Main
 local frame = Instance.new("Frame")
-frame.Name = "CompactFrame"
-frame.Size = UDim2.new(0, 160, 0, 315)
-frame.Position = UDim2.new(0, 50, 0, 50) 
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-frame.BackgroundTransparency = 0.3
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Parent = gui
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+frame.Name = "CompactFrame"; frame.Size = UDim2.new(0, 200, 0, 300); frame.Position = UDim2.new(0, 50, 0, 50) 
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35); frame.BackgroundTransparency = 0.15
+frame.BorderSizePixel = 0; frame.Active = true; frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
--- Nút Mở GUI
 local openButton = Instance.new("TextButton")
-openButton.Name = "OpenButton"
-openButton.Size = UDim2.new(0, 80, 0, 30)
-openButton.Position = UDim2.new(0, 50, 0, 50)
-openButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-openButton.TextColor3 = Color3.new(1, 1, 1)
-openButton.Text = "Mở GUI"
-openButton.Visible = false 
-openButton.Active = true
-openButton.Parent = gui
-Instance.new("UICorner", openButton).CornerRadius = UDim.new(0, 4)
+openButton.Name = "OpenButton"; openButton.Size = UDim2.new(0, 90, 0, 35); openButton.Position = UDim2.new(0, 50, 0, 50)
+openButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255); openButton.TextColor3 = Color3.new(1, 1, 1)
+openButton.Font = Enum.Font.SourceSansBold; openButton.TextSize = 14
+openButton.Text = "Mở GUI"; openButton.Visible = false; openButton.Active = true; openButton.Parent = gui
+Instance.new("UICorner", openButton).CornerRadius = UDim.new(0, 6)
 
--- HỆ THỐNG DRAG MENU
 local function makeDraggable(uiInstance)
     local dragging = false; local dragInput, dragStart, startPos; local currentTouchObject = nil
     uiInstance.InputBegan:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not dragging then
             dragging = true; currentTouchObject = input; dragStart = input.Position; startPos = uiInstance.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false; currentTouchObject = nil end
-            end)
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false; currentTouchObject = nil end end)
         end
     end)
     uiInstance.InputChanged:Connect(function(input)
@@ -121,144 +68,42 @@ local function makeDraggable(uiInstance)
 end
 makeDraggable(frame); makeDraggable(openButton)
 
--- HÀNG 1: Chỉnh số WalkSpeed
-local decreaseButton = Instance.new("TextButton")
-decreaseButton.Size = UDim2.new(0, 30, 0, 25); decreaseButton.Position = UDim2.new(0, 5, 0, 10)
-decreaseButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50); decreaseButton.TextColor3 = Color3.new(1, 1, 1)
-decreaseButton.Text = "-"; decreaseButton.Parent = frame
-Instance.new("UICorner", decreaseButton).CornerRadius = UDim.new(0, 4)
+local FONT = Enum.Font.SourceSansBold
+local C_OFF = Color3.fromRGB(60, 60, 70)
+local function createBtn(name, text, w, x, y, color, parent)
+    local b = Instance.new("TextButton"); b.Name = name; b.Size = UDim2.new(0, w, 0, 30); b.Position = UDim2.new(0, x, 0, y)
+    b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1, 1, 1); b.Font = FONT; b.TextSize = 13
+    b.Text = text; b.Parent = parent; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+    return b
+end
 
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Size = UDim2.new(0, 80, 0, 25); speedLabel.Position = UDim2.new(0, 40, 0, 10)
-speedLabel.BackgroundTransparency = 1; speedLabel.TextColor3 = Color3.new(1, 1, 1)
-speedLabel.Text = "Speed: " .. speedValue; speedLabel.Parent = frame
+local jumpButton = createBtn("jumpBtn", infiniteJumpEnabled and "Inf: ON" or "Inf: OFF", 85, 10, 10, infiniteJumpEnabled and Color3.fromRGB(0, 200, 100) or C_OFF, frame)
+local safeButton = createBtn("safeBtn", safeEnabled and "Safe: ON" or "Safe: OFF", 85, 105, 10, safeEnabled and Color3.fromRGB(255, 150, 0) or C_OFF, frame)
+local tpButton = createBtn("tpBtn", tpNearestEnabled and "TP: ON" or "TP: OFF", 85, 10, 45, tpNearestEnabled and Color3.fromRGB(0, 200, 100) or C_OFF, frame)
+local showSafeBtn = createBtn("showSfBtn", showSafeSquare and "BtnSF: ON" or "BtnSF: OFF", 85, 105, 45, showSafeSquare and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50), frame)
+local espButton = createBtn("espBtn", espEnabled and "ESP: ON" or "ESP: OFF", 180, 10, 80, espEnabled and Color3.fromRGB(0, 180, 255) or C_OFF, frame)
+local tpaButton = createBtn("tpaBtn", tpaEnabled and "TPA: ON" or "TPA: OFF", 85, 10, 115, tpaEnabled and Color3.fromRGB(150, 0, 255) or C_OFF, frame)
+local moveButton = createBtn("moveBtn", moveEnabled and "Move: ON" or "Move: OFF", 85, 105, 115, moveEnabled and Color3.fromRGB(0, 200, 100) or C_OFF, frame)
+local decreaseSizeButton = createBtn("decTpBtn", "TP Size: -", 85, 10, 150, Color3.fromRGB(180, 50, 50), frame)
+local increaseSizeButton = createBtn("incTpBtn", "TP Size: +", 85, 105, 150, Color3.fromRGB(50, 180, 50), frame)
+local decreaseSafeSizeBtn = createBtn("decSfBtn", "SF Size: -", 85, 10, 185, Color3.fromRGB(180, 100, 20), frame)
+local increaseSafeSizeBtn = createBtn("incSfBtn", "SF Size: +", 85, 105, 185, Color3.fromRGB(180, 150, 20), frame)
+local flingButton = createBtn("flingBtn", flingEnabled and "Atk Fling: ON" or "Atk Fling: OFF", 180, 10, 220, flingEnabled and Color3.fromRGB(255, 0, 100) or C_OFF, frame)
+local minimizeButton = createBtn("minBtn", "Thu nhỏ (-)", 180, 10, 255, Color3.fromRGB(200, 50, 50), frame)
 
-local increaseButton = Instance.new("TextButton")
-increaseButton.Size = UDim2.new(0, 30, 0, 25); increaseButton.Position = UDim2.new(0, 125, 0, 10)
-increaseButton.BackgroundColor3 = Color3.fromRGB(50, 255, 50); increaseButton.TextColor3 = Color3.new(1, 1, 1)
-increaseButton.Text = "+"; increaseButton.Parent = frame
-Instance.new("UICorner", increaseButton).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 2: NÚT BẬT TẮT SPEED
-local speedToggleButton = Instance.new("TextButton")
-speedToggleButton.Size = UDim2.new(0, 150, 0, 25); speedToggleButton.Position = UDim2.new(0, 5, 0, 40)
-speedToggleButton.BackgroundColor3 = speedEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 255)
-speedToggleButton.TextColor3 = Color3.new(1, 1, 1); speedToggleButton.Font = Enum.Font.SourceSansBold; speedToggleButton.TextSize = 14
-speedToggleButton.Text = speedEnabled and "Speed: ON" or "Speed: OFF"; speedToggleButton.Parent = frame
-Instance.new("UICorner", speedToggleButton).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 3: Inf Jump & Safe Base
-local jumpButton = Instance.new("TextButton")
-jumpButton.Size = UDim2.new(0, 72, 0, 25); jumpButton.Position = UDim2.new(0, 5, 0, 70)
-jumpButton.BackgroundColor3 = infiniteJumpEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 255)
-jumpButton.TextColor3 = Color3.new(1, 1, 1); jumpButton.Font = Enum.Font.SourceSansBold; jumpButton.TextSize = 13
-jumpButton.Text = infiniteJumpEnabled and "Inf: ON" or "Inf: OFF"; jumpButton.Parent = frame
-Instance.new("UICorner", jumpButton).CornerRadius = UDim.new(0, 4)
-
-local safeButton = Instance.new("TextButton")
-safeButton.Size = UDim2.new(0, 72, 0, 25); safeButton.Position = UDim2.new(0, 83, 0, 70)
-safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
-safeButton.TextColor3 = Color3.new(0, 0, 0); safeButton.Font = Enum.Font.SourceSansBold; safeButton.TextSize = 13
-safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"; safeButton.Parent = frame
-Instance.new("UICorner", safeButton).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 4: TP & Nút bật/tắt nút Safe ở ngoài
-local tpButton = Instance.new("TextButton")
-tpButton.Size = UDim2.new(0, 72, 0, 25); tpButton.Position = UDim2.new(0, 5, 0, 100)
-tpButton.BackgroundColor3 = tpNearestEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 100, 0)
-tpButton.TextColor3 = Color3.new(1, 1, 1); tpButton.Font = Enum.Font.SourceSansBold; tpButton.TextSize = 13
-tpButton.Text = tpNearestEnabled and "TP: ON" or "TP: OFF"; tpButton.Parent = frame
-Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 4)
-
-local showSafeBtn = Instance.new("TextButton")
-showSafeBtn.Size = UDim2.new(0, 72, 0, 25); showSafeBtn.Position = UDim2.new(0, 83, 0, 100)
-showSafeBtn.BackgroundColor3 = showSafeSquare and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
-showSafeBtn.TextColor3 = Color3.new(1, 1, 1); showSafeBtn.Font = Enum.Font.SourceSansBold; showSafeBtn.TextSize = 11
-showSafeBtn.Text = showSafeSquare and "BtnSF:ON" or "BtnSF:OFF"; showSafeBtn.Parent = frame
-Instance.new("UICorner", showSafeBtn).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 5: ESP
-local espButton = Instance.new("TextButton")
-espButton.Size = UDim2.new(0, 150, 0, 25); espButton.Position = UDim2.new(0, 5, 0, 130)
-espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 150, 255)
-espButton.TextColor3 = Color3.new(1, 1, 1); espButton.Font = Enum.Font.SourceSansBold; espButton.TextSize = 14
-espButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"; espButton.Parent = frame
-Instance.new("UICorner", espButton).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 6: TPA & Move
-local tpaButton = Instance.new("TextButton")
-tpaButton.Size = UDim2.new(0, 72, 0, 25); tpaButton.Position = UDim2.new(0, 5, 0, 160)
-tpaButton.BackgroundColor3 = tpaEnabled and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(0, 0, 0)
-tpaButton.TextColor3 = Color3.new(1, 1, 1); tpaButton.Font = Enum.Font.SourceSansBold; tpaButton.TextSize = 13
-tpaButton.Text = tpaEnabled and "TPA: ON" or "TPA: OFF"; tpaButton.Parent = frame
-Instance.new("UICorner", tpaButton).CornerRadius = UDim.new(0, 4)
-
-local moveButton = Instance.new("TextButton")
-moveButton.Size = UDim2.new(0, 72, 0, 25); moveButton.Position = UDim2.new(0, 83, 0, 160)
-moveButton.BackgroundColor3 = moveEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(130, 130, 130)
-moveButton.TextColor3 = Color3.new(1, 1, 1); moveButton.Font = Enum.Font.SourceSansBold; moveButton.TextSize = 13
-moveButton.Text = moveEnabled and "Move: ON" or "Move: OFF"; moveButton.Parent = frame
-Instance.new("UICorner", moveButton).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 7: Chỉnh Size TP
-local decreaseSizeButton = Instance.new("TextButton")
-decreaseSizeButton.Size = UDim2.new(0, 72, 0, 25); decreaseSizeButton.Position = UDim2.new(0, 5, 0, 190)
-decreaseSizeButton.BackgroundColor3 = Color3.fromRGB(80, 20, 20); decreaseSizeButton.TextColor3 = Color3.new(1, 1, 1)
-decreaseSizeButton.Font = Enum.Font.SourceSansBold; decreaseSizeButton.Text = "TP Size:-"; decreaseSizeButton.Parent = frame
-Instance.new("UICorner", decreaseSizeButton).CornerRadius = UDim.new(0, 4)
-
-local increaseSizeButton = Instance.new("TextButton")
-increaseSizeButton.Size = UDim2.new(0, 72, 0, 25); increaseSizeButton.Position = UDim2.new(0, 83, 0, 190)
-increaseSizeButton.BackgroundColor3 = Color3.fromRGB(20, 80, 20); increaseSizeButton.TextColor3 = Color3.new(1, 1, 1)
-increaseSizeButton.Font = Enum.Font.SourceSansBold; increaseSizeButton.Text = "TP Size:+"; increaseSizeButton.Parent = frame
-Instance.new("UICorner", increaseSizeButton).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 8: Chỉnh Size SAFE
-local decreaseSafeSizeBtn = Instance.new("TextButton")
-decreaseSafeSizeBtn.Size = UDim2.new(0, 72, 0, 25); decreaseSafeSizeBtn.Position = UDim2.new(0, 5, 0, 220)
-decreaseSafeSizeBtn.BackgroundColor3 = Color3.fromRGB(100, 60, 0); decreaseSafeSizeBtn.TextColor3 = Color3.new(1, 1, 1)
-decreaseSafeSizeBtn.Font = Enum.Font.SourceSansBold; decreaseSafeSizeBtn.Text = "SF Size:-"; decreaseSafeSizeBtn.Parent = frame
-Instance.new("UICorner", decreaseSafeSizeBtn).CornerRadius = UDim.new(0, 4)
-
-local increaseSafeSizeBtn = Instance.new("TextButton")
-increaseSafeSizeBtn.Size = UDim2.new(0, 72, 0, 25); increaseSafeSizeBtn.Position = UDim2.new(0, 83, 0, 220)
-increaseSafeSizeBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 0); increaseSafeSizeBtn.TextColor3 = Color3.new(1, 1, 1)
-increaseSafeSizeBtn.Font = Enum.Font.SourceSansBold; increaseSafeSizeBtn.Text = "SF Size:+"; increaseSafeSizeBtn.Parent = frame
-Instance.new("UICorner", increaseSafeSizeBtn).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 9: NÚT ATK FLING 
-local flingButton = Instance.new("TextButton")
-flingButton.Size = UDim2.new(0, 150, 0, 25); flingButton.Position = UDim2.new(0, 5, 0, 250)
-flingButton.BackgroundColor3 = flingEnabled and Color3.fromRGB(200, 0, 200) or Color3.fromRGB(100, 0, 100)
-flingButton.TextColor3 = Color3.new(1, 1, 1); flingButton.Font = Enum.Font.SourceSansBold; flingButton.TextSize = 14
-flingButton.Text = flingEnabled and "Atk Fling: ON" or "Atk Fling: OFF"; flingButton.Parent = frame
-Instance.new("UICorner", flingButton).CornerRadius = UDim.new(0, 4)
-
--- HÀNG 10: Nút Thu nhỏ
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Size = UDim2.new(0, 150, 0, 25); minimizeButton.Position = UDim2.new(0, 5, 0, 280)
-minimizeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50); minimizeButton.TextColor3 = Color3.new(1, 1, 1)
-minimizeButton.Text = "Thu nhỏ (-)"; minimizeButton.Parent = frame
-Instance.new("UICorner", minimizeButton).CornerRadius = UDim.new(0, 4)
-
--- TẠO NÚT VUÔNG TP
 local tpSquare = Instance.new("TextButton")
-tpSquare.Name = "TPSquareButton"; tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue)
+tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue)
 tpSquare.Position = UDim2.new(MySettings.tpSquareX_Scale, MySettings.tpSquareX_Offset, MySettings.tpSquareY_Scale, MySettings.tpSquareY_Offset) 
-tpSquare.BackgroundColor3 = Color3.fromRGB(255, 0, 0); tpSquare.Text = "TP"
-tpSquare.TextColor3 = Color3.new(1, 1, 1); tpSquare.Font = Enum.Font.SourceSansBold; tpSquare.TextSize = 16
-tpSquare.Visible = tpaEnabled; tpSquare.Active = true; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
+tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50); tpSquare.Text = "TP"; tpSquare.TextColor3 = Color3.new(1,1,1)
+tpSquare.Font = FONT; tpSquare.TextSize = 16; tpSquare.Visible = tpaEnabled; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
 
--- TẠO NÚT VUÔNG SAFE (Đã thêm logic nhận diện ON/OFF ban đầu)
 local safeSquare = Instance.new("TextButton")
-safeSquare.Name = "SafeSquareButton"; safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue)
+safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue)
 safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset) 
-safeSquare.BackgroundColor3 = safeEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 200, 0)
-safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"
-safeSquare.TextColor3 = Color3.new(0, 0, 0); safeSquare.Font = Enum.Font.SourceSansBold; safeSquare.TextSize = 14
-safeSquare.Visible = showSafeSquare; safeSquare.Active = true; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
+safeSquare.BackgroundColor3 = safeEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 180, 0)
+safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.TextColor3 = Color3.new(0,0,0)
+safeSquare.Font = FONT; safeSquare.TextSize = 14; safeSquare.Visible = showSafeSquare; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
 
--- HỆ THỐNG KÉO THẢ NÚT VUÔNG
 local function setupSquareDrag(targetUi, settingPrefix)
     local dragging = false; local dragInput, dragStart, startPos; local touchObject = nil
     targetUi.InputBegan:Connect(function(input)
@@ -287,8 +132,7 @@ local function setupSquareDrag(targetUi, settingPrefix)
     end)
 end
 setupSquareDrag(tpSquare, "tpSquare"); setupSquareDrag(safeSquare, "safeSquare")
-
--- LOGIC CHỨC NĂNG
+local C_ON_GRN = Color3.fromRGB(0, 200, 100)
 local function getClosestPlayer()
     local closestPlayer = nil; local shortestDistance = math.huge
     local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -303,55 +147,9 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
-decreaseButton.MouseButton1Click:Connect(function() 
-    if speedValue > 16 then speedValue = speedValue - 5; speedLabel.Text = "Speed: "..speedValue; MySettings.speedValue = speedValue; SaveConfig() end 
-end)
-
-increaseButton.MouseButton1Click:Connect(function() 
-    if speedValue < 500 then speedValue = speedValue + 5; speedLabel.Text = "Speed: "..speedValue; MySettings.speedValue = speedValue; SaveConfig() end 
-end)
-
--- BẬT/TẮT SPEED (Trả về tốc độ gốc chuẩn của game)
-speedToggleButton.MouseButton1Click:Connect(function()
-    speedEnabled = not speedEnabled
-    speedToggleButton.Text = speedEnabled and "Speed: ON" or "Speed: OFF"
-    speedToggleButton.BackgroundColor3 = speedEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 255)
-    MySettings.speedEnabled = speedEnabled
-    SaveConfig()
-    
-    pcall(function()
-        local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-        if humanoid then
-            if speedEnabled then
-                if humanoid.WalkSpeed ~= speedValue then
-                    originalGameSpeed = humanoid.WalkSpeed
-                end
-                humanoid.WalkSpeed = speedValue
-            else
-                humanoid.WalkSpeed = originalGameSpeed
-            end
-        end
-    end)
-end)
-
--- Vòng lặp ép tốc độ (Chỉ hoạt động khi ON, OFF tắt hẳn)
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        if speedEnabled then
-            pcall(function() 
-                local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-                if humanoid then
-                    humanoid.WalkSpeed = speedValue 
-                end
-            end)
-        end
-    end
-end)
-
 jumpButton.MouseButton1Click:Connect(function() 
     infiniteJumpEnabled = not infiniteJumpEnabled; jumpButton.Text = infiniteJumpEnabled and "Inf: ON" or "Inf: OFF"
-    jumpButton.BackgroundColor3 = infiniteJumpEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 120, 255)
+    jumpButton.BackgroundColor3 = infiniteJumpEnabled and C_ON_GRN or C_OFF
     MySettings.infiniteJumpEnabled = infiniteJumpEnabled; SaveConfig()
 end)
 
@@ -382,55 +180,29 @@ local function checkSafePlatform()
     end
 end
 
--- LOGIC ĐỒNG BỘ: KHI BẤM NÚT TRONG MENU
 safeButton.MouseButton1Click:Connect(function()
     safeEnabled = not safeEnabled
-    
-    -- Đổi nút trong Menu
     safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"
-    safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
-    
-    -- Đồng bộ luôn màu nút Vuông ở ngoài
-    if safeEnabled then
-        safeSquare.Text = "SF: ON"
-        safeSquare.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-    else
-        safeSquare.Text = "SAFE"
-        safeSquare.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-    end
-
+    safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 150, 0) or C_OFF
+    safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"
+    safeSquare.BackgroundColor3 = safeEnabled and C_ON_GRN or Color3.fromRGB(255, 180, 0)
     MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform()
 end)
 
--- BẬT/TẮT ẨN HIỆN NÚT VUÔNG SAFE
 showSafeBtn.MouseButton1Click:Connect(function()
-    showSafeSquare = not showSafeSquare; showSafeBtn.Text = showSafeSquare and "BtnSF:ON" or "BtnSF:OFF"
-    showSafeBtn.BackgroundColor3 = showSafeSquare and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+    showSafeSquare = not showSafeSquare; showSafeBtn.Text = showSafeSquare and "BtnSF: ON" or "BtnSF: OFF"
+    showSafeBtn.BackgroundColor3 = showSafeSquare and C_ON_GRN or Color3.fromRGB(200, 50, 50)
     safeSquare.Visible = showSafeSquare
     MySettings.showSafeSquare = showSafeSquare; SaveConfig()
 end)
 
--- LOGIC ĐỒNG BỘ: KHI BẤM NÚT VUÔNG Ở NGOÀI
 safeSquare.MouseButton1Click:Connect(function()
     safeEnabled = not safeEnabled
-    
-    -- Đồng bộ màu nút trong Menu
     safeButton.Text = safeEnabled and "Safe: ON" or "Safe: OFF"
-    safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 255, 0)
-    
-    -- Đổi màu chữ nút Vuông chính nó
-    if safeEnabled then
-        safeSquare.Text = "SF: ON"
-        safeSquare.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Xanh lá khi ON
-    else
-        safeSquare.Text = "SAFE"
-        safeSquare.BackgroundColor3 = Color3.fromRGB(255, 200, 0) -- Vàng khi OFF
-    end
-    
-    MySettings.safeEnabled = safeEnabled; SaveConfig()
-    checkSafePlatform()
-    
-    -- Nếu vừa BẬT lên, teleport ngay lập tức
+    safeButton.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 150, 0) or C_OFF
+    safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"
+    safeSquare.BackgroundColor3 = safeEnabled and C_ON_GRN or Color3.fromRGB(255, 180, 0)
+    MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform()
     if safeEnabled then
         task.wait(0.05)
         if safePart then
@@ -452,14 +224,14 @@ end)
 
 tpaButton.MouseButton1Click:Connect(function()
     tpaEnabled = not tpaEnabled; tpaButton.Text = tpaEnabled and "TPA: ON" or "TPA: OFF"
-    tpaButton.BackgroundColor3 = tpaEnabled and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(0, 0, 0); tpSquare.Visible = tpaEnabled
-    if not tpaEnabled then squareTpActive = false; tpSquare.Text = "TP"; tpSquare.BackgroundColor3 = Color3.fromRGB(255, 0, 0) end
+    tpaButton.BackgroundColor3 = tpaEnabled and Color3.fromRGB(150, 0, 255) or C_OFF; tpSquare.Visible = tpaEnabled
+    if not tpaEnabled then squareTpActive = false; tpSquare.Text = "TP"; tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50) end
     MySettings.tpaEnabled = tpaEnabled; SaveConfig()
 end)
 
 moveButton.MouseButton1Click:Connect(function()
     moveEnabled = not moveEnabled; moveButton.Text = moveEnabled and "Move: ON" or "Move: OFF"
-    moveButton.BackgroundColor3 = moveEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(130, 130, 130)
+    moveButton.BackgroundColor3 = moveEnabled and C_ON_GRN or C_OFF
     MySettings.moveEnabled = moveEnabled; SaveConfig()
 end)
 
@@ -467,9 +239,9 @@ tpSquare.MouseButton1Click:Connect(function()
     if tpaEnabled then 
         squareTpActive = not squareTpActive
         if squareTpActive then
-            tpSquare.Text = "TP: ON"; tpSquare.BackgroundColor3 = Color3.fromRGB(0, 200, 100) 
+            tpSquare.Text = "TP: ON"; tpSquare.BackgroundColor3 = C_ON_GRN 
         else
-            tpSquare.Text = "TP"; tpSquare.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+            tpSquare.Text = "TP"; tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
         end
     end
 end)
@@ -494,20 +266,12 @@ local function triggerAttackBlink()
     if flingEnabled and not isAttacking then
         local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local target = getClosestPlayer()
-        
         if myHrp and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
             local targetHrp = target.Character.HumanoidRootPart
             if (myHrp.Position - targetHrp.Position).Magnitude < 25 then
-                oldCFrame = myHrp.CFrame 
-                isAttacking = true
-                task.wait(0.2) 
-                isAttacking = false
-                if oldCFrame then
-                    myHrp.CFrame = oldCFrame 
-                    myHrp.Velocity = Vector3.new(0, 0, 0)
-                    myHrp.RotVelocity = Vector3.new(0, 0, 0)
-                    oldCFrame = nil
-                end
+                oldCFrame = myHrp.CFrame; isAttacking = true
+                task.wait(0.2); isAttacking = false
+                if oldCFrame then myHrp.CFrame = oldCFrame; myHrp.Velocity = Vector3.new(0, 0, 0); myHrp.RotVelocity = Vector3.new(0, 0, 0); oldCFrame = nil end
             end
         end
     end
@@ -523,39 +287,30 @@ end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and flingEnabled then
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            triggerAttackBlink()
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then triggerAttackBlink() end
     end
 end)
 
 flingButton.MouseButton1Click:Connect(function()
-    flingEnabled = not flingEnabled
-    flingButton.Text = flingEnabled and "Atk Fling: ON" or "Atk Fling: OFF"
-    flingButton.BackgroundColor3 = flingEnabled and Color3.fromRGB(200, 0, 200) or Color3.fromRGB(100, 0, 100)
+    flingEnabled = not flingEnabled; flingButton.Text = flingEnabled and "Atk Fling: ON" or "Atk Fling: OFF"
+    flingButton.BackgroundColor3 = flingEnabled and Color3.fromRGB(255, 0, 100) or C_OFF
     MySettings.flingEnabled = flingEnabled; SaveConfig()
 end)
 
 RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    local myHrp = char and char:FindFirstChild("HumanoidRootPart")
+    local char = LocalPlayer.Character; local myHrp = char and char:FindFirstChild("HumanoidRootPart")
     if not myHrp then return end
-    
     if flingEnabled and isAttacking then
         pcall(function()
             local target = getClosestPlayer()
             if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                 local targetHrp = target.Character.HumanoidRootPart
                 myHrp.CFrame = targetHrp.CFrame * CFrame.Angles(math.rad(math.random(0,360)), math.rad(math.random(0,360)), math.rad(math.random(0,360)))
-                myHrp.Velocity = Vector3.new(99999, 99999, 99999)
-                myHrp.RotVelocity = Vector3.new(99999, 99999, 99999)
+                myHrp.Velocity = Vector3.new(99999, 99999, 99999); myHrp.RotVelocity = Vector3.new(99999, 99999, 99999)
             end
         end)
     else
-        if flingEnabled then
-            myHrp.Velocity = Vector3.new(0, 0, 0)
-            myHrp.RotVelocity = Vector3.new(0, 0, 0)
-        end
+        if flingEnabled then myHrp.Velocity = Vector3.new(0, 0, 0); myHrp.RotVelocity = Vector3.new(0, 0, 0) end
     end
 end)
 
@@ -564,12 +319,10 @@ local function createESP(player)
     local function applyESP(character)
         task.wait(0.5); if not espEnabled then return end
         local head = character:WaitForChild("Head", 5); if not head then return end
-        local billboard = Instance.new("BillboardGui"); billboard.Name = "ESP_Billboard"
-        billboard.Size = UDim2.new(0, 200, 0, 50); billboard.AlwaysOnTop = true
-        billboard.StudsOffset = Vector3.new(0, 3, 0); billboard.Parent = head
-        local nameLabel = Instance.new("TextLabel"); nameLabel.Size = UDim2.new(1, 0, 1, 0)
-        nameLabel.BackgroundTransparency = 1; nameLabel.Text = player.Name
-        nameLabel.TextColor3 = Color3.fromRGB(255, 0, 0); nameLabel.TextStrokeTransparency = 0; nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+        local billboard = Instance.new("BillboardGui"); billboard.Name = "ESP_Billboard"; billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.AlwaysOnTop = true; billboard.StudsOffset = Vector3.new(0, 3, 0); billboard.Parent = head
+        local nameLabel = Instance.new("TextLabel"); nameLabel.Size = UDim2.new(1, 0, 1, 0); nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name; nameLabel.TextColor3 = Color3.fromRGB(255, 50, 50); nameLabel.TextStrokeTransparency = 0
         nameLabel.Font = Enum.Font.SourceSansBold; nameLabel.TextSize = 18; nameLabel.Parent = billboard
         espObjects[player] = {Billboard = billboard}
     end
@@ -578,9 +331,7 @@ local function createESP(player)
 end
 
 local function removeESP()
-    for player, objects in pairs(espObjects) do
-        if objects.Billboard then objects.Billboard:Destroy() end
-    end
+    for player, objects in pairs(espObjects) do if objects.Billboard then objects.Billboard:Destroy() end end
     espObjects = {}
 end
 
@@ -590,20 +341,18 @@ end
 
 espButton.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled; espButton.Text = espEnabled and "ESP: ON" or "ESP: OFF"
-    espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(0, 150, 255)
+    espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 180, 255) or C_OFF
     MySettings.espEnabled = espEnabled; SaveConfig(); updateESPStatus()
 end)
 
 Players.PlayerAdded:Connect(function(p) if espEnabled then createESP(p) end end)
 Players.PlayerRemoving:Connect(function(p)
-    if espObjects[p] then
-        if espObjects[p].Billboard then espObjects[p].Billboard:Destroy() end; espObjects[p] = nil
-    end
+    if espObjects[p] then if espObjects[p].Billboard then espObjects[p].Billboard:Destroy() end; espObjects[p] = nil end
 end)
 
 tpButton.MouseButton1Click:Connect(function()
     tpNearestEnabled = not tpNearestEnabled; tpButton.Text = tpNearestEnabled and "TP: ON" or "TP: OFF"
-    tpButton.BackgroundColor3 = tpNearestEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 100, 0)
+    tpButton.BackgroundColor3 = tpNearestEnabled and C_ON_GRN or C_OFF
     MySettings.tpNearestEnabled = tpNearestEnabled; SaveConfig()
 end)
 
@@ -625,15 +374,9 @@ end)
 
 LocalPlayer.CharacterAdded:Connect(function(char) 
     task.wait(0.5); checkSafePlatform(); updateESPStatus(); trackWeapon(char) 
-    if not speedEnabled then
-        pcall(function() originalGameSpeed = char:WaitForChild("Humanoid").WalkSpeed end)
-    end
 end)
 
-if LocalPlayer.Character then 
-    trackWeapon(LocalPlayer.Character) 
-    pcall(function() originalGameSpeed = LocalPlayer.Character:WaitForChild("Humanoid").WalkSpeed end)
-end
+if LocalPlayer.Character then trackWeapon(LocalPlayer.Character) end
 
 minimizeButton.MouseButton1Click:Connect(function() frame.Visible = false; openButton.Position = frame.Position; openButton.Visible = true end)
 openButton.MouseButton1Click:Connect(function() openButton.Visible = false; frame.Position = openButton.Position; frame.Visible = true end)
