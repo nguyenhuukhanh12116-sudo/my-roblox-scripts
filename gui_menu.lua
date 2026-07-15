@@ -1,3 +1,6 @@
+-- ========================================================
+-- PHẦN 1: KHỞI TẠO CẤU HÌNH, TẠO GUI GỐC VÀ HÀM KÉO THẢ
+-- ========================================================
 local SETTINGS_FILE = "JNHHGaming_Config.json"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -36,19 +39,29 @@ local safePart, espObjects, squareTpActive, isAttacking, oldCFrame = nil, {}, fa
 local gui = Instance.new("ScreenGui")
 gui.Name = "JNHHGamingCompact"; gui.ResetOnSpawn = false; gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Khung menu chính
 local frame = Instance.new("Frame")
 frame.Name = "CompactFrame"; frame.Size = UDim2.new(0, 340, 0, 330); frame.Position = UDim2.new(0, 50, 0, 50) 
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35); frame.BackgroundTransparency = 0.15
 frame.BorderSizePixel = 0; frame.Active = true; frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
+-- NÚT MỞ MENU (Đã làm nhỏ lại 50x30 và đặt vị trí mặc định riêng biệt)
 local openButton = Instance.new("TextButton")
-openButton.Name = "OpenButton"; openButton.Size = UDim2.new(0, 90, 0, 35); openButton.Position = frame.Position
-openButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255); openButton.TextColor3 = Color3.new(1, 1, 1)
-openButton.Font = Enum.Font.SourceSansBold; openButton.TextSize = 14
-openButton.Text = "Mở GUI"; openButton.Visible = false; openButton.Active = true; openButton.Parent = gui
+openButton.Name = "OpenButton"
+openButton.Size = UDim2.new(0, 50, 0, 30) -- Thu nhỏ kích cỡ (Cũ là 90x35)
+openButton.Position = UDim2.new(0, 15, 0, 15) -- Tách riêng vị trí mặc định ra góc màn hình (Cũ là đè lên frame)
+openButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+openButton.TextColor3 = Color3.new(1, 1, 1)
+openButton.Font = Enum.Font.SourceSansBold
+openButton.TextSize = 12 -- Chữ nhỏ hơn cho cân đối với nút
+openButton.Text = "Mở" -- Rút gọn chữ
+openButton.Visible = false
+openButton.Active = true
+openButton.Parent = gui
 Instance.new("UICorner", openButton).CornerRadius = UDim.new(0, 6)
 
+-- Hàm kéo thả UI độc lập hoàn toàn
 local function makeDraggable(ui)
     local drag, dragStart, startPos, touchObj = false, nil, nil, nil
     ui.InputBegan:Connect(function(input)
@@ -65,8 +78,9 @@ local function makeDraggable(ui)
     end)
 end
 makeDraggable(frame); makeDraggable(openButton)
-
--- Đồng bộ vị trí nút thu nhỏ và mở rộng
+-- ========================================================
+-- PHẦN 2: THIẾT LẬP CÁC NÚT BẤM, MENU PHỤ VÀ HỆ THỐNG PHÍM NỔI
+-- ========================================================
 local FONT = Enum.Font.SourceSansBold
 local C_OFF = Color3.fromRGB(60, 60, 70)
 local C_ON_GRN = Color3.fromRGB(0, 200, 100)
@@ -88,34 +102,14 @@ local fogBtn = createBtn("fogBtn", noFogEnabled and "NoFog: ON" or "NoFog: OFF",
 local clickTpBtn = createBtn("clickTpBtn", clickTpEnabled and "ClickTP: ON" or "ClickTP: OFF", 150, 10, 255, clickTpEnabled and C_ON_GRN or C_OFF, frame)
 local minBtn = createBtn("minBtn", "Thu nhỏ (-)", 150, 10, 290, Color3.fromRGB(200, 50, 50), frame)
 
+-- SỬA LỖI: Chỉ ẩn/hiện chứ không gán đè vị trí của nhau nữa
 minBtn.MouseButton1Click:Connect(function() 
-    openButton.Position = frame.Position -- Cập nhật vị trí cục mở theo menu
-    frame.Visible = false; openButton.Visible = true 
+    frame.Visible = false
+    openButton.Visible = true 
 end)
 openButton.MouseButton1Click:Connect(function() 
-    frame.Position = openButton.Position -- Cập nhật menu theo cục mở
-    openButton.Visible = false; frame.Visible = true 
-end)
--- LOGIC NOCLIP (TẮT TỰ NHẢY + ĐI XUYÊN TƯỜNG + KHÔNG LỌT ĐẤT)
-noclipBtn.MouseButton1Click:Connect(function()
-    noclipEnabled = not noclipEnabled; noclipBtn.Text = noclipEnabled and "Noclip: ON" or "Noclip: OFF"
-    noclipBtn.BackgroundColor3 = noclipEnabled and C_ON_GRN or C_OFF; MySettings.noclipEnabled = noclipEnabled; SaveConfig()
-end)
-
-RunService.Stepped:Connect(function()
-    if noclipEnabled and LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.AutoJumpEnabled = false end -- Chặn tuyệt đối tự nhảy
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                local pName = part.Name:lower()
-                -- Xuyên hết mọi thứ, CHỈ GIỮ LẠI CHÂN để đi được trên mặt đất
-                if not (string.find(pName, "leg") or string.find(pName, "foot") or string.find(pName, "shoe")) then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end
+    openButton.Visible = false
+    frame.Visible = true 
 end)
 
 -- CỘT 2: MENU
@@ -137,7 +131,7 @@ local tpaBtn = createBtn("tpaBtn", tpaEnabled and "TPA: ON" or "TPA: OFF", 160, 
 local decTpBtn = createBtn("decTpBtn", "TP Size: -", 75, 0, 70, Color3.fromRGB(180, 50, 50), tpFrame)
 local incTpBtn = createBtn("incTpBtn", "TP Size: +", 75, 85, 70, Color3.fromRGB(50, 180, 50), tpFrame)
 
--- MENU CUSTOM TP NỔI (MỚI THEO ẢNH)
+-- MENU CUSTOM TP NỔI
 local floatTpMenuBtn = createBtn("fTpMenuBtn", "▶ Nút TP Nổi", 160, 0, 0, Color3.fromRGB(80, 80, 90), col2); floatTpMenuBtn.LayoutOrder = 5
 local floatTpFrame = Instance.new("Frame", col2); floatTpFrame.BackgroundTransparency = 1; floatTpFrame.Size = UDim2.new(0, 160, 0, 105); floatTpFrame.Visible = false; floatTpFrame.LayoutOrder = 6
 
@@ -183,8 +177,8 @@ addFloatBtn.MouseButton1Click:Connect(function()
     local f = Instance.new("Frame", gui)
     f.Name = "FloatTP_" .. id; f.Size = UDim2.new(0, 140 * floatSizeMulti, 0, 50 * floatSizeMulti)
     f.Position = UDim2.new(0.5, 0, 0.5, id * 60)
-    f.BackgroundColor3 = Color3.new(0, 0, 0) -- Nền đen
-    f.BorderColor3 = Color3.new(1, 0, 0); f.BorderSizePixel = 2 -- Viền đỏ
+    f.BackgroundColor3 = Color3.new(0, 0, 0)
+    f.BorderColor3 = Color3.new(1, 0, 0); f.BorderSizePixel = 2
     f.Active = true
     
     local numLbl = Instance.new("TextLabel", f)
@@ -233,6 +227,9 @@ delFloatBtn.MouseButton1Click:Connect(function()
         last.Frame:Destroy()
     end
 end)
+-- ========================================================
+-- PHẦN 3: LOGIC CHỨC NĂNG CHÍNH (NOCLIP, ESP, INF JUMP, SAFE PLATFORM, FLING...)
+-- ========================================================
 -- NÚT VUÔNG TP VÀ SAFE
 local tpSquare = Instance.new("TextButton"); tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue); tpSquare.Position = UDim2.new(MySettings.tpSquareX_Scale, MySettings.tpSquareX_Offset, MySettings.tpSquareY_Scale, MySettings.tpSquareY_Offset) 
 tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50); tpSquare.Text = "TP"; tpSquare.TextColor3 = Color3.new(1,1,1); tpSquare.Font = FONT; tpSquare.TextSize = 16; tpSquare.Visible = tpaEnabled; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
@@ -276,6 +273,27 @@ local function getClosestPlayer()
     end
     return closestPlayer
 end
+
+-- LOGIC NOCLIP (TẮT TỰ NHẢY + ĐI XUYÊN TƯỜNG + KHÔNG LỌT ĐẤT)
+noclipBtn.MouseButton1Click:Connect(function()
+    noclipEnabled = not noclipEnabled; noclipBtn.Text = noclipEnabled and "Noclip: ON" or "Noclip: OFF"
+    noclipBtn.BackgroundColor3 = noclipEnabled and C_ON_GRN or C_OFF; MySettings.noclipEnabled = noclipEnabled; SaveConfig()
+end)
+
+RunService.Stepped:Connect(function()
+    if noclipEnabled and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.AutoJumpEnabled = false end
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local pName = part.Name:lower()
+                if not (string.find(pName, "leg") or string.find(pName, "foot") or string.find(pName, "shoe")) then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
 
 local function applyFPSBoost(obj)
     if obj:IsA("BasePart") then obj.Material = Enum.Material.SmoothPlastic; obj.Color = Color3.new(1, 1, 1); obj.CastShadow = false
