@@ -14,16 +14,13 @@ local MySettings = {
     infiniteJumpEnabled = false, safeEnabled = false, tpNearestEnabled = false,
     espEnabled = false, tpaEnabled = false, moveEnabled = false, flingEnabled = false,
     noclipEnabled = false, showSafeSquare = true, tpSizeValue = 50, safeSizeValue = 50,
-    fpsBoostEnabled = false, noFogEnabled = false, clickTpEnabled = false,
+    fpsBoostEnabled = false, noFogEnabled = false, clickTpEnabled = false, floatTpSizeValue = 80,
     tpSquareX_Scale = 0.5, tpSquareX_Offset = -55, tpSquareY_Scale = 0.5, tpSquareY_Offset = -25,
     safeSquareX_Scale = 0.5, safeSquareX_Offset = 5, safeSquareY_Scale = 0.5, safeSquareY_Offset = -25,
-    autoRollEnabled = false, -- Tự động cuộn
-    tpManagerData = {} -- Lưu trữ danh sách TP mới
+    autoRollEnabled = false, tpManagerData = {}
 }
 
-local function SaveConfig()
-    pcall(function() if writefile then writefile(SETTINGS_FILE, HttpService:JSONEncode(MySettings)) end end)
-end
+local function SaveConfig() pcall(function() if writefile then writefile(SETTINGS_FILE, HttpService:JSONEncode(MySettings)) end end) end
 local function LoadConfig()
     if readfile and isfile and isfile(SETTINGS_FILE) then
         local s, d = pcall(function() return HttpService:JSONDecode(readfile(SETTINGS_FILE)) end)
@@ -34,13 +31,11 @@ LoadConfig()
 
 local infiniteJumpEnabled, safeEnabled, tpNearestEnabled = MySettings.infiniteJumpEnabled, MySettings.safeEnabled, MySettings.tpNearestEnabled
 local espEnabled, tpaEnabled, moveEnabled, flingEnabled = MySettings.espEnabled, MySettings.tpaEnabled, MySettings.moveEnabled, MySettings.flingEnabled
-local noclipEnabled, showSafeSquare = MySettings.noclipEnabled, MySettings.showSafeSquare
+local noclipEnabled, showSafeSquare, autoRollEnabled = MySettings.noclipEnabled, MySettings.showSafeSquare, MySettings.autoRollEnabled
 local fpsBoostEnabled, noFogEnabled, clickTpEnabled = MySettings.fpsBoostEnabled, MySettings.noFogEnabled, MySettings.clickTpEnabled
-local autoRollEnabled = MySettings.autoRollEnabled
 local tpSizeValue, safeSizeValue = MySettings.tpSizeValue, MySettings.safeSizeValue
 local safePart, espObjects, squareTpActive, isAttacking, oldCFrame = nil, {}, false, false, nil
 
--- Dùng gethui() nếu có để tránh anti-cheat, không thì dùng CoreGui/PlayerGui
 local guiParent = pcall(function() return gethui() end) and gethui() or (CoreGui:FindFirstChild("RobloxGui") or LocalPlayer:WaitForChild("PlayerGui"))
 local gui = Instance.new("ScreenGui"); gui.Name = "JNHHGamingCompact"; gui.ResetOnSpawn = false; gui.Parent = guiParent
 
@@ -55,24 +50,13 @@ Instance.new("UICorner", openButton).CornerRadius = UDim.new(0, 6)
 
 local function makeDraggable(ui)
     local drag, dragStart, startPos, touchObj = false, nil, nil, nil
-    ui.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-            drag = true; touchObj = input; dragStart = input.Position; startPos = ui.Position
-        end
-    end)
+    ui.InputBegan:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then drag = true; touchObj = input; dragStart = input.Position; startPos = ui.Position end end)
     ui.InputEnded:Connect(function(input) if input == touchObj then drag = false; touchObj = nil end end)
-    UserInputService.InputChanged:Connect(function(input)
-        if drag and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then
-            local delta = input.Position - dragStart; ui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+    UserInputService.InputChanged:Connect(function(input) if drag and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then local delta = input.Position - dragStart; ui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 end
 makeDraggable(frame); makeDraggable(openButton)
 
-local FONT = Enum.Font.SourceSansBold
-local C_OFF = Color3.fromRGB(60, 60, 70)
-local C_ON_GRN = Color3.fromRGB(0, 200, 100)
-
+local FONT, C_OFF, C_ON_GRN = Enum.Font.SourceSansBold, Color3.fromRGB(60, 60, 70), Color3.fromRGB(0, 200, 100)
 local function createBtn(name, text, w, x, y, color, parent)
     local b = Instance.new("TextButton"); b.Name = name; b.Size = UDim2.new(0, w, 0, 30); b.Position = UDim2.new(0, x, 0, y)
     b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1, 1, 1); b.Font = FONT; b.TextSize = 13; b.Text = text; b.Parent = parent
@@ -89,15 +73,12 @@ local fogBtn = createBtn("fogBtn", noFogEnabled and "NoFog: ON" or "NoFog: OFF",
 local clickTpBtn = createBtn("clickTpBtn", clickTpEnabled and "ClickTP: ON" or "ClickTP: OFF", 150, 10, 255, clickTpEnabled and C_ON_GRN or C_OFF, frame)
 local autoRollBtn = createBtn("aRollBtn", autoRollEnabled and "Auto Cuộn: ON" or "Auto Cuộn: OFF", 150, 10, 290, autoRollEnabled and Color3.fromRGB(255, 100, 0) or C_OFF, frame)
 local minBtn = createBtn("minBtn", "Thu nhỏ (-)", 150, 10, 325, Color3.fromRGB(200, 50, 50), frame)
-
 minBtn.MouseButton1Click:Connect(function() frame.Visible = false; openButton.Visible = true end)
 openButton.MouseButton1Click:Connect(function() openButton.Visible = false; frame.Visible = true end)
 
-local col2 = Instance.new("Frame", frame)
-col2.Size = UDim2.new(0, 180, 1, -20); col2.Position = UDim2.new(0, 170, 0, 10); col2.BackgroundTransparency = 1
+local col2 = Instance.new("Frame", frame); col2.Size = UDim2.new(0, 180, 1, -20); col2.Position = UDim2.new(0, 170, 0, 10); col2.BackgroundTransparency = 1
 local col2List = Instance.new("UIListLayout", col2); col2List.Padding = UDim.new(0, 5); col2List.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Menu Cuộn
 local safeMenuBtn = createBtn("sMenuBtn", "▶ Menu SAFE", 180, 0, 0, Color3.fromRGB(80, 80, 90), col2); safeMenuBtn.LayoutOrder = 1
 local safeFrame = Instance.new("Frame", col2); safeFrame.BackgroundTransparency = 1; safeFrame.Size = UDim2.new(0, 180, 0, 65); safeFrame.Visible = false; safeFrame.LayoutOrder = 2
 local safeBtn = createBtn("safeBtn", safeEnabled and "Safe: ON" or "Safe: OFF", 85, 0, 0, safeEnabled and Color3.fromRGB(255, 150, 0) or C_OFF, safeFrame)
@@ -112,152 +93,146 @@ local tpaBtn = createBtn("tpaBtn", tpaEnabled and "TPA: ON" or "TPA: OFF", 180, 
 local decTpBtn = createBtn("decTpBtn", "TP Size -", 85, 0, 70, Color3.fromRGB(180, 50, 50), tpFrame)
 local incTpBtn = createBtn("incTpBtn", "TP Size +", 85, 95, 70, Color3.fromRGB(50, 180, 50), tpFrame)
 
--- HỆ THỐNG QUẢN LÝ TP MỚI
 local floatTpMenuBtn = createBtn("fTpMenuBtn", "▶ Quản Lý TP (Cài Đặt)", 180, 0, 0, Color3.fromRGB(80, 80, 90), col2); floatTpMenuBtn.LayoutOrder = 5
-local floatTpFrame = Instance.new("Frame", col2); floatTpFrame.BackgroundTransparency = 1; floatTpFrame.Size = UDim2.new(0, 180, 0, 200); floatTpFrame.Visible = false; floatTpFrame.LayoutOrder = 6
-
+local floatTpFrame = Instance.new("Frame", col2); floatTpFrame.BackgroundTransparency = 1; floatTpFrame.Size = UDim2.new(0, 180, 0, 235); floatTpFrame.Visible = false; floatTpFrame.LayoutOrder = 6
 local addTpManagerBtn = createBtn("addTpmBtn", "+ Thêm Điểm Mới", 180, 0, 0, Color3.fromRGB(0, 150, 255), floatTpFrame)
+local decFloatBtn = createBtn("decFlBtn", "Size -", 45, 0, 35, Color3.fromRGB(200, 50, 50), floatTpFrame)
+local floatSizeLbl = createBtn("flSzLbl", "Size: "..(MySettings.floatTpSizeValue or 80), 80, 50, 35, Color3.fromRGB(80, 80, 90), floatTpFrame)
+local incFloatBtn = createBtn("incFlBtn", "Size +", 45, 135, 35, Color3.fromRGB(50, 200, 50), floatTpFrame)
 local scrollList = Instance.new("ScrollingFrame", floatTpFrame)
-scrollList.Size = UDim2.new(1, 0, 1, -35); scrollList.Position = UDim2.new(0, 0, 0, 35); scrollList.BackgroundTransparency = 1
-scrollList.ScrollBarThickness = 4; scrollList.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollList.Size = UDim2.new(1, 0, 1, -70); scrollList.Position = UDim2.new(0, 0, 0, 70); scrollList.BackgroundTransparency = 1; scrollList.ScrollBarThickness = 4; scrollList.CanvasSize = UDim2.new(0, 0, 0, 0)
 local scrollLayout = Instance.new("UIListLayout", scrollList); scrollLayout.Padding = UDim.new(0, 5)
-
+-- ========================================================
+-- PHẦN 2: LOGIC QUẢN LÝ TP, FLOAT NÚT VÀ AUTO ROLL
+-- ========================================================
 local isSafeOpen, isTpOpen, isFloatTpOpen = false, false, false
 local function updateMainFrameSize()
     local baseHeight = 360
-    local col2Height = 10 + 35 + (isSafeOpen and 70 or 0) + 35 + (isTpOpen and 105 or 0) + 35 + (isFloatTpOpen and 205 or 0)
+    local col2Height = 10 + 35 + (isSafeOpen and 70 or 0) + 35 + (isTpOpen and 105 or 0) + 35 + (isFloatTpOpen and 240 or 0)
     frame.Size = UDim2.new(0, 360, 0, math.max(baseHeight, col2Height))
 end
 
 safeMenuBtn.MouseButton1Click:Connect(function() isSafeOpen = not isSafeOpen; safeFrame.Visible = isSafeOpen; safeMenuBtn.Text = isSafeOpen and "▼ Thu gọn SAFE" or "▶ Menu SAFE"; updateMainFrameSize() end)
 tpMenuBtn.MouseButton1Click:Connect(function() isTpOpen = not isTpOpen; tpFrame.Visible = isTpOpen; tpMenuBtn.Text = isTpOpen and "▼ Thu gọn Menu TP" or "▶ Menu TP (Nút Vuông)"; updateMainFrameSize() end)
 floatTpMenuBtn.MouseButton1Click:Connect(function() isFloatTpOpen = not isFloatTpOpen; floatTpFrame.Visible = isFloatTpOpen; floatTpMenuBtn.Text = isFloatTpOpen and "▼ Thu gọn Quản Lý TP" or "▶ Quản Lý TP (Cài Đặt)"; updateMainFrameSize() end)
--- ========================================================
--- PHẦN 2: LOGIC QUẢN LÝ TP, FLOAT NÚT VÀ AUTO ROLL
--- ========================================================
-local floatingUIs = {}
 
+local floatingUIs = {}
 local function RenderFloatScreenButtons()
-    for _, ui in pairs(floatingUIs) do ui:Destroy() end
-    floatingUIs = {}
-    
+    for _, ui in pairs(floatingUIs) do ui:Destroy() end; floatingUIs = {}
+    local sizeV = MySettings.floatTpSizeValue or 80
     for i, data in ipairs(MySettings.tpManagerData) do
         if data.show then
             local f = Instance.new("Frame", gui)
-            f.Size = UDim2.new(0, 80, 0, 40)
+            f.Size = UDim2.new(0, sizeV, 0, sizeV / 2)
             if data.pos then f.Position = UDim2.new(data.pos[1], data.pos[2], data.pos[3], data.pos[4])
             else f.Position = UDim2.new(0.2 + (i%3)*0.1, 0, 0.2 + math.floor(i/3)*0.1, 0) end
             f.BackgroundColor3 = Color3.new(0,0,0); f.BorderColor3 = Color3.new(1,0,0); f.BorderSizePixel = 2; f.Active = true
-            
-            local numLbl = Instance.new("TextLabel", f)
-            numLbl.Size = UDim2.new(0.3, 0, 1, 0); numLbl.BackgroundTransparency = 1
-            numLbl.Text = tostring(i); numLbl.TextColor3 = Color3.new(1,1,1); numLbl.Font = FONT; numLbl.TextSize = 16
-            
-            local tpBtn = Instance.new("TextButton", f)
-            tpBtn.Size = UDim2.new(0.7, 0, 1, 0); tpBtn.Position = UDim2.new(0.3, 0, 0, 0); tpBtn.BackgroundColor3 = Color3.new(1,0,0)
-            tpBtn.BorderColor3 = Color3.new(0.5,0,0); tpBtn.BorderSizePixel = 1; tpBtn.Text = "TP"
-            tpBtn.TextColor3 = Color3.new(0,0,0); tpBtn.Font = FONT; tpBtn.TextSize = 18
-
+            local numLbl = Instance.new("TextLabel", f); numLbl.Size = UDim2.new(0.3, 0, 1, 0); numLbl.BackgroundTransparency = 1; numLbl.Text = tostring(i); numLbl.TextColor3 = Color3.new(1,1,1); numLbl.Font = FONT; numLbl.TextSize = 16
+            local tpBtn = Instance.new("TextButton", f); tpBtn.Size = UDim2.new(0.7, 0, 1, 0); tpBtn.Position = UDim2.new(0.3, 0, 0, 0); tpBtn.BackgroundColor3 = Color3.new(1,0,0); tpBtn.BorderColor3 = Color3.new(0.5,0,0); tpBtn.BorderSizePixel = 1; tpBtn.Text = "TP"; tpBtn.TextColor3 = Color3.new(0,0,0); tpBtn.Font = FONT; tpBtn.TextSize = 18
             local drag, dragStart, startPos, touchObj = false, nil, nil, nil
-            f.InputBegan:Connect(function(input)
-                if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-                    drag = true; dragStart = input.Position; startPos = f.Position; touchObj = input
-                end
-            end)
-            f.InputEnded:Connect(function(input) 
-                if input == touchObj then 
-                    drag = false; touchObj = nil; data.pos = {f.Position.X.Scale, f.Position.X.Offset, f.Position.Y.Scale, f.Position.Y.Offset}; SaveConfig() 
-                end 
-            end)
-            UserInputService.InputChanged:Connect(function(input)
-                if drag and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then
-                    local delta = input.Position - dragStart; f.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-                end
-            end)
-
-            tpBtn.MouseButton1Click:Connect(function()
-                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if hrp and data.cframe then pcall(function() hrp.CFrame = CFrame.new(unpack(data.cframe)) end) end
-            end)
+            f.InputBegan:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then drag = true; dragStart = input.Position; startPos = f.Position; touchObj = input end end)
+            f.InputEnded:Connect(function(input) if input == touchObj then drag = false; touchObj = nil; data.pos = {f.Position.X.Scale, f.Position.X.Offset, f.Position.Y.Scale, f.Position.Y.Offset}; SaveConfig() end end)
+            UserInputService.InputChanged:Connect(function(input) if drag and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then local delta = input.Position - dragStart; f.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+            tpBtn.MouseButton1Click:Connect(function() local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if hrp and data.cframe then pcall(function() hrp.CFrame = CFrame.new(unpack(data.cframe)) end) end end)
             table.insert(floatingUIs, f)
         end
     end
 end
 
 local function RenderTPManagerList()
-    for _, v in pairs(scrollList:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
-    local totalHeight = 0
+    for _, v in pairs(scrollList:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end; local totalHeight = 0
     for i, data in ipairs(MySettings.tpManagerData) do
-        local item = Instance.new("Frame", scrollList)
-        item.Size = UDim2.new(1, -10, 0, 60); item.BackgroundTransparency = 1
-        
-        local nameBox = Instance.new("TextBox", item)
-        nameBox.Size = UDim2.new(1, 0, 0, 25); nameBox.Position = UDim2.new(0, 0, 0, 0); nameBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-        nameBox.TextColor3 = Color3.new(1,1,1); nameBox.Font = FONT; nameBox.TextSize = 14; nameBox.Text = data.name or ("Set " .. i); nameBox.ClearTextOnFocus = false
-        Instance.new("UICorner", nameBox).CornerRadius = UDim.new(0, 4)
+        local item = Instance.new("Frame", scrollList); item.Size = UDim2.new(1, -10, 0, 60); item.BackgroundTransparency = 1
+        local nameBox = Instance.new("TextBox", item); nameBox.Size = UDim2.new(1, 0, 0, 25); nameBox.Position = UDim2.new(0, 0, 0, 0); nameBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50); nameBox.TextColor3 = Color3.new(1,1,1); nameBox.Font = FONT; nameBox.TextSize = 14; nameBox.Text = data.name or ("Set " .. i); nameBox.ClearTextOnFocus = false; Instance.new("UICorner", nameBox).CornerRadius = UDim.new(0, 4)
         nameBox.FocusLost:Connect(function() data.name = nameBox.Text; SaveConfig() end)
-        
         local btnW = 38
         local setBtn = createBtn("setB", "Set", btnW, 0, 30, Color3.fromRGB(0, 150, 200), item)
         local tpBtn = createBtn("tpB", "TP", btnW, btnW + 4, 30, Color3.fromRGB(0, 200, 100), item)
         local showBtn = createBtn("shwB", data.show and "Mắt:ON" or "Mắt:OFF", btnW+12, (btnW*2) + 8, 30, data.show and C_ON_GRN or C_OFF, item)
         local delBtn = createBtn("delB", "Xóa", btnW-6, (btnW*3) + 24, 30, Color3.fromRGB(200, 50, 50), item)
         showBtn.TextSize = 12; delBtn.TextSize = 12
-        
-        setBtn.MouseButton1Click:Connect(function()
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then data.cframe = {hrp.CFrame:GetComponents()}; SaveConfig(); setBtn.Text = "OK"; task.delay(1, function() setBtn.Text = "Set" end) end
-        end)
-        tpBtn.MouseButton1Click:Connect(function()
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp and data.cframe then pcall(function() hrp.CFrame = CFrame.new(unpack(data.cframe)) end) end
-        end)
-        showBtn.MouseButton1Click:Connect(function()
-            data.show = not data.show; showBtn.Text = data.show and "Mắt:ON" or "Mắt:OFF"; showBtn.BackgroundColor3 = data.show and C_ON_GRN or C_OFF
-            SaveConfig(); RenderFloatScreenButtons()
-        end)
-        delBtn.MouseButton1Click:Connect(function()
-            table.remove(MySettings.tpManagerData, i); SaveConfig(); RenderTPManagerList(); RenderFloatScreenButtons()
-        end)
+        setBtn.MouseButton1Click:Connect(function() local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if hrp then data.cframe = {hrp.CFrame:GetComponents()}; SaveConfig(); setBtn.Text = "OK"; task.delay(1, function() setBtn.Text = "Set" end) end end)
+        tpBtn.MouseButton1Click:Connect(function() local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if hrp and data.cframe then pcall(function() hrp.CFrame = CFrame.new(unpack(data.cframe)) end) end end)
+        showBtn.MouseButton1Click:Connect(function() data.show = not data.show; showBtn.Text = data.show and "Mắt:ON" or "Mắt:OFF"; showBtn.BackgroundColor3 = data.show and C_ON_GRN or C_OFF; SaveConfig(); RenderFloatScreenButtons() end)
+        delBtn.MouseButton1Click:Connect(function() table.remove(MySettings.tpManagerData, i); SaveConfig(); RenderTPManagerList(); RenderFloatScreenButtons() end)
         totalHeight = totalHeight + 65
     end
     scrollList.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 end
 
-addTpManagerBtn.MouseButton1Click:Connect(function()
-    table.insert(MySettings.tpManagerData, { name = "Set " .. (#MySettings.tpManagerData + 1), cframe = nil, show = true, pos = nil })
-    SaveConfig(); RenderTPManagerList(); RenderFloatScreenButtons()
-end)
-
+addTpManagerBtn.MouseButton1Click:Connect(function() table.insert(MySettings.tpManagerData, { name = "Set " .. (#MySettings.tpManagerData + 1), cframe = nil, show = true, pos = nil }); SaveConfig(); RenderTPManagerList(); RenderFloatScreenButtons() end)
+decFloatBtn.MouseButton1Click:Connect(function() local cur = MySettings.floatTpSizeValue or 80; if cur > 40 then MySettings.floatTpSizeValue = cur - 10; floatSizeLbl.Text = "Size: " .. MySettings.floatTpSizeValue; SaveConfig(); RenderFloatScreenButtons() end end)
+incFloatBtn.MouseButton1Click:Connect(function() local cur = MySettings.floatTpSizeValue or 80; if cur < 150 then MySettings.floatTpSizeValue = cur + 10; floatSizeLbl.Text = "Size: " .. MySettings.floatTpSizeValue; SaveConfig(); RenderFloatScreenButtons() end end)
 RenderTPManagerList(); RenderFloatScreenButtons()
 
--- LOGIC AUTO ROLL (TỰ ĐỘNG CUỘN)
-autoRollBtn.MouseButton1Click:Connect(function()
-    autoRollEnabled = not autoRollEnabled; autoRollBtn.Text = autoRollEnabled and "Auto Cuộn: ON" or "Auto Cuộn: OFF"
-    autoRollBtn.BackgroundColor3 = autoRollEnabled and Color3.fromRGB(255, 100, 0) or C_OFF; MySettings.autoRollEnabled = autoRollEnabled; SaveConfig()
+-- ==========================================
+-- LOGIC AUTO ROLL THÔNG MINH (ĐỌC SỐ GIÂY)
+-- ==========================================
+local function isRollReady(text)
+    if not text then return false end
+    local t = string.lower(text)
+    
+    -- Điều kiện 1: Phải có chữ "roll" hoặc "cuộn"
+    if not (string.find(t, "cuộn") or string.find(t, "roll")) then return false end
+    
+    -- Điều kiện 2: Kiểm tra xem có đang đếm ngược số giây (vd: "4s", "12s") không
+    local secMatch = string.match(t, "(%d+)s")
+    if secMatch and tonumber(secMatch) > 0 then 
+        return false -- Đang lớn hơn 0s -> Bỏ qua
+    end
+    
+    -- Điều kiện 3: Kiểm tra định dạng đồng hồ (vd: "00:04")
+    local m, s = string.match(t, "(%d+):(%d+)")
+    if m and s and (tonumber(m) > 0 or tonumber(s) > 0) then 
+        return false -- Vẫn còn thời gian đếm ngược -> Bỏ qua
+    end
+    
+    -- Điều kiện 4: Kiểm tra chữ hiển thị trạng thái chờ
+    if string.find(t, "cooldown") or string.find(t, "wait") then return false end
+    
+    -- Nếu qua hết bài test trên (VD: nó hiện "0s", "00:00", hoặc "Roll 1x") -> Click
+    return true
+end
+
+autoRollBtn.MouseButton1Click:Connect(function() 
+    autoRollEnabled = not autoRollEnabled; 
+    autoRollBtn.Text = autoRollEnabled and "Auto Cuộn: ON" or "Auto Cuộn: OFF"; 
+    autoRollBtn.BackgroundColor3 = autoRollEnabled and Color3.fromRGB(255, 100, 0) or C_OFF; 
+    MySettings.autoRollEnabled = autoRollEnabled; 
+    SaveConfig() 
 end)
 
 task.spawn(function()
     while true do
-        task.wait(0.5)
+        task.wait(0.2) -- Check mỗi 0.2s để bắt đúng nhịp 0s nhanh nhất
         if autoRollEnabled then
             local pGui = LocalPlayer:FindFirstChild("PlayerGui")
             if pGui then
                 for _, element in pairs(pGui:GetDescendants()) do
                     if (element:IsA("TextButton") or element:IsA("ImageButton")) and element.Visible then
-                        local hasText = false
-                        if element:IsA("TextButton") and (string.find(string.lower(element.Text), "cuộn") or string.find(string.lower(element.Text), "roll")) then hasText = true end
-                        if not hasText then
-                            local txtLabel = element:FindFirstChildOfClass("TextLabel")
-                            if txtLabel and (string.find(string.lower(txtLabel.Text), "cuộn") or string.find(string.lower(txtLabel.Text), "roll")) then hasText = true end
+                        local readyToClick = false
+                        
+                        -- Quét Text trực tiếp trên nút
+                        if element:IsA("TextButton") then
+                            readyToClick = isRollReady(element.Text)
                         end
-                        if hasText then
+                        
+                        -- Quét Text của TextLabel nằm bên trong nút (Nhiều game dùng cách này)
+                        if not readyToClick then
+                            local txtLabel = element:FindFirstChildOfClass("TextLabel")
+                            if txtLabel then
+                                readyToClick = isRollReady(txtLabel.Text)
+                            end
+                        end
+                        
+                        -- Thực hiện Click nếu thỏa mãn điều kiện
+                        if readyToClick then
                             pcall(function()
                                 if firesignal then 
                                     firesignal(element.MouseButton1Click); firesignal(element.Activated) 
                                 else 
                                     for _, conn in pairs(getconnections(element.Activated) or {}) do conn:Fire() end
-                                    for _, conn in pairs(getconnections(element.MouseButton1Click) or {}) do conn:Fire() end
+                                    for _, conn in pairs(getconnections(element.MouseButton1Click) or {}) do conn:Fire() end 
                                 end
                             end)
                         end
@@ -267,60 +242,33 @@ task.spawn(function()
         end
     end
 end)
-
--- NÚT VUÔNG TP VÀ SAFE CŨ
-local tpSquare = Instance.new("TextButton"); tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue); tpSquare.Position = UDim2.new(MySettings.tpSquareX_Scale, MySettings.tpSquareX_Offset, MySettings.tpSquareY_Scale, MySettings.tpSquareY_Offset) 
-tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50); tpSquare.Text = "TP"; tpSquare.TextColor3 = Color3.new(1,1,1); tpSquare.Font = FONT; tpSquare.TextSize = 16; tpSquare.Visible = tpaEnabled; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
-
-local safeSquare = Instance.new("TextButton"); safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue); safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset) 
-safeSquare.BackgroundColor3 = safeEnabled and C_ON_GRN or Color3.fromRGB(255, 180, 0); safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.TextColor3 = Color3.new(0,0,0); safeSquare.Font = FONT; safeSquare.TextSize = 14; safeSquare.Visible = showSafeSquare; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
-
-local function setupSquareDrag(targetUi, settingPrefix)
-    local drag, dragStart, startPos, touchObj = false, nil, nil, nil
-    targetUi.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and moveEnabled then
-            drag = true; touchObj = input; dragStart = input.Position; startPos = targetUi.Position
-        end
-    end)
-    targetUi.InputEnded:Connect(function(input)
-        if input == touchObj then 
-            drag = false; touchObj = nil; MySettings[settingPrefix.."X_Scale"] = targetUi.Position.X.Scale; MySettings[settingPrefix.."X_Offset"] = targetUi.Position.X.Offset
-            MySettings[settingPrefix.."Y_Scale"] = targetUi.Position.Y.Scale; MySettings[settingPrefix.."Y_Offset"] = targetUi.Position.Y.Offset; SaveConfig()
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if drag and moveEnabled and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then
-            local delta = input.Position - dragStart; targetUi.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-end
-setupSquareDrag(tpSquare, "tpSquare"); setupSquareDrag(safeSquare, "safeSquare")
 -- ========================================================
 -- PHẦN 3: CÁC CHỨC NĂNG CỐT LÕI VÀ VÒNG LẶP
 -- ========================================================
+local tpSquare = Instance.new("TextButton"); tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue); tpSquare.Position = UDim2.new(MySettings.tpSquareX_Scale, MySettings.tpSquareX_Offset, MySettings.tpSquareY_Scale, MySettings.tpSquareY_Offset); tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50); tpSquare.Text = "TP"; tpSquare.TextColor3 = Color3.new(1,1,1); tpSquare.Font = FONT; tpSquare.TextSize = 16; tpSquare.Visible = tpaEnabled; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
+local safeSquare = Instance.new("TextButton"); safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue); safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset); safeSquare.BackgroundColor3 = safeEnabled and C_ON_GRN or Color3.fromRGB(255, 180, 0); safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.TextColor3 = Color3.new(0,0,0); safeSquare.Font = FONT; safeSquare.TextSize = 14; safeSquare.Visible = showSafeSquare; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
+
+local function setupSquareDrag(targetUi, settingPrefix)
+    local drag, dragStart, startPos, touchObj = false, nil, nil, nil
+    targetUi.InputBegan:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and moveEnabled then drag = true; touchObj = input; dragStart = input.Position; startPos = targetUi.Position end end)
+    targetUi.InputEnded:Connect(function(input) if input == touchObj then drag = false; touchObj = nil; MySettings[settingPrefix.."X_Scale"] = targetUi.Position.X.Scale; MySettings[settingPrefix.."X_Offset"] = targetUi.Position.X.Offset; MySettings[settingPrefix.."Y_Scale"] = targetUi.Position.Y.Scale; MySettings[settingPrefix.."Y_Offset"] = targetUi.Position.Y.Offset; SaveConfig() end end)
+    UserInputService.InputChanged:Connect(function(input) if drag and moveEnabled and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then local delta = input.Position - dragStart; targetUi.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+end
+setupSquareDrag(tpSquare, "tpSquare"); setupSquareDrag(safeSquare, "safeSquare")
+
 local function getClosestPlayer()
-    local closestPlayer = nil; local shortestDistance = math.huge
-    local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if myHrp then
-        for _, v in pairs(Players:GetPlayers()) do
-            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                local distance = (myHrp.Position - v.Character.HumanoidRootPart.Position).Magnitude
-                if distance < shortestDistance then shortestDistance = distance; closestPlayer = v end
-            end
-        end
-    end
+    local closestPlayer = nil; local shortestDistance = math.huge; local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if myHrp then for _, v in pairs(Players:GetPlayers()) do if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then local distance = (myHrp.Position - v.Character.HumanoidRootPart.Position).Magnitude; if distance < shortestDistance then shortestDistance = distance; closestPlayer = v end end end end
     return closestPlayer
 end
 
 noclipBtn.MouseButton1Click:Connect(function() noclipEnabled = not noclipEnabled; noclipBtn.Text = noclipEnabled and "Noclip: ON" or "Noclip: OFF"; noclipBtn.BackgroundColor3 = noclipEnabled and C_ON_GRN or C_OFF; MySettings.noclipEnabled = noclipEnabled; SaveConfig() end)
 RunService.Stepped:Connect(function() if noclipEnabled and LocalPlayer.Character then local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if hum then hum.AutoJumpEnabled = false end; for _, part in pairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") then local pName = part.Name:lower(); if not (string.find(pName, "leg") or string.find(pName, "foot") or string.find(pName, "shoe")) then part.CanCollide = false end end end end end)
-
 fpsBtn.MouseButton1Click:Connect(function() fpsBoostEnabled = not fpsBoostEnabled; fpsBtn.Text = fpsBoostEnabled and "FPS: ON" or "FPS: OFF"; fpsBtn.BackgroundColor3 = fpsBoostEnabled and C_ON_GRN or C_OFF; MySettings.fpsBoostEnabled = fpsBoostEnabled; SaveConfig(); if fpsBoostEnabled then for _, v in pairs(workspace:GetDescendants()) do if v:IsA("BasePart") then v.Material = Enum.Material.SmoothPlastic; v.Color = Color3.new(1,1,1); v.CastShadow = false elseif v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 1 end end end end)
 fogBtn.MouseButton1Click:Connect(function() noFogEnabled = not noFogEnabled; fogBtn.Text = noFogEnabled and "NoFog: ON" or "NoFog: OFF"; fogBtn.BackgroundColor3 = noFogEnabled and C_ON_GRN or C_OFF; MySettings.noFogEnabled = noFogEnabled; SaveConfig(); if noFogEnabled then Lighting.FogEnd = 100000; for _, v in pairs(Lighting:GetDescendants()) do if v:IsA("Atmosphere") then v:Destroy() end end end end)
 
 local clickTpTool = nil
 clickTpBtn.MouseButton1Click:Connect(function() clickTpEnabled = not clickTpEnabled; clickTpBtn.Text = clickTpEnabled and "ClickTP: ON" or "ClickTP: OFF"; clickTpBtn.BackgroundColor3 = clickTpEnabled and C_ON_GRN or C_OFF; MySettings.clickTpEnabled = clickTpEnabled; SaveConfig(); if clickTpEnabled then if not clickTpTool then clickTpTool = Instance.new("Tool"); clickTpTool.Name = "Click To TP"; clickTpTool.RequiresHandle = false; clickTpTool.Parent = LocalPlayer.Backpack; clickTpTool.Activated:Connect(function() local mouse = LocalPlayer:GetMouse(); if mouse.Target and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0)) end end) end else if clickTpTool then clickTpTool:Destroy(); clickTpTool = nil end end end)
-
 jumpBtn.MouseButton1Click:Connect(function() infiniteJumpEnabled = not infiniteJumpEnabled; jumpBtn.Text = infiniteJumpEnabled and "Inf: ON" or "Inf: OFF"; jumpBtn.BackgroundColor3 = infiniteJumpEnabled and C_ON_GRN or C_OFF; MySettings.infiniteJumpEnabled = infiniteJumpEnabled; SaveConfig() end)
 UserInputService.JumpRequest:Connect(function() if infiniteJumpEnabled then pcall(function() LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end) end end)
 
