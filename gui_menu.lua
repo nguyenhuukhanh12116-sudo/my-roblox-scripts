@@ -107,7 +107,7 @@ local scrollLayout = Instance.new("UIListLayout", scrollList); scrollLayout.Padd
 -- ========================================================
 local isSafeOpen, isTpOpen, isFloatTpOpen = false, false, false
 local function updateMainFrameSize()
-    local baseHeight = 360
+    local baseHeight = 450
     local col2Height = 10 + 35 + (isSafeOpen and 70 or 0) + 35 + (isTpOpen and 105 or 0) + 35 + (isFloatTpOpen and 240 or 0)
     frame.Size = UDim2.new(0, 360, 0, math.max(baseHeight, col2Height))
 end
@@ -307,3 +307,121 @@ task.spawn(function() while true do task.wait(0.01); if tpNearestEnabled then pc
 LocalPlayer.CharacterAdded:Connect(function(char) task.wait(0.5); checkSafePlatform(); updateESPStatus(); trackWeapon(char) end)
 if LocalPlayer.Character then trackWeapon(LocalPlayer.Character) end
 checkSafePlatform(); updateESPStatus()
+-- ========================================================
+-- PHẦN 4: TÍNH NĂNG FULLBRIGHT & ĐỔI MÀU GIAO DIỆN (RAINBOW)
+-- ========================================================
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+-- 1. TÌM TỰ ĐỘNG ICON MỞ MENU (Để đổi màu cùng Menu)
+local openMenuBtn = nil
+for _, child in pairs(gui:GetChildren()) do
+    if (child:IsA("TextButton") or child:IsA("ImageButton")) and child ~= frame and child.Name ~= "Frame" then
+        openMenuBtn = child
+        break
+    end
+end
+
+-- 2. TẠO NÚT ĐỔI MÀU GIAO DIỆN
+local colorBtn = Instance.new("TextButton", frame)
+colorBtn.Size = UDim2.new(1, -20, 0, 30)
+colorBtn.Position = UDim2.new(0, 10, 1, -115) -- Điều chỉnh vị trí Y để không đè lên nút khác
+colorBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+colorBtn.TextColor3 = Color3.new(1, 1, 1)
+colorBtn.Font = Enum.Font.Code
+colorBtn.TextSize = 14
+colorBtn.Text = "Màu Menu: Mặc định"
+Instance.new("UICorner", colorBtn).CornerRadius = UDim.new(0, 5)
+
+local themes = {
+    {name = "Mặc định (Đen)", color = Color3.fromRGB(30, 30, 35)},
+    {name = "Đỏ Huyết", color = Color3.fromRGB(150, 0, 0)},
+    {name = "Xanh Nước", color = Color3.fromRGB(0, 50, 150)},
+    {name = "Lục Bảo", color = Color3.fromRGB(0, 100, 50)},
+    {name = "Tím Mộng Mơ", color = Color3.fromRGB(100, 0, 150)},
+    {name = "Hồng Ne-on", color = Color3.fromRGB(200, 50, 100)},
+    {name = "CẦU VỒNG (Rainbow)", color = "Rainbow"}
+}
+local currentThemeIdx = 1
+local rainbowConn = nil
+
+colorBtn.MouseButton1Click:Connect(function()
+    currentThemeIdx = currentThemeIdx + 1
+    if currentThemeIdx > #themes then currentThemeIdx = 1 end
+    
+    local theme = themes[currentThemeIdx]
+    colorBtn.Text = "Màu Menu: " .. theme.name
+    
+    -- Xóa hiệu ứng cầu vồng cũ nếu có
+    if rainbowConn then 
+        rainbowConn:Disconnect() 
+        rainbowConn = nil 
+    end
+    
+    if theme.color == "Rainbow" then
+        -- Chế độ Cầu Vồng (Chuyển màu liên tục)
+        rainbowConn = RunService.RenderStepped:Connect(function()
+            local hue = tick() % 5 / 5 -- Tốc độ đổi màu (chu kỳ 5 giây)
+            local rbColor = Color3.fromHSV(hue, 1, 1)
+            frame.BackgroundColor3 = rbColor
+            if openMenuBtn then openMenuBtn.BackgroundColor3 = rbColor end
+        end)
+    else
+        -- Chế độ màu tĩnh
+        frame.BackgroundColor3 = theme.color
+        if openMenuBtn then openMenuBtn.BackgroundColor3 = theme.color end
+    end
+end)
+
+-- 3. TẠO NÚT FULLBRIGHT (NHÌN XUYÊN MÀN ĐÊM)
+local fullbrightBtn = Instance.new("TextButton", frame)
+fullbrightBtn.Size = UDim2.new(1, -20, 0, 30)
+fullbrightBtn.Position = UDim2.new(0, 10, 1, -75) -- Đặt dưới nút đổi màu
+fullbrightBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+fullbrightBtn.TextColor3 = Color3.new(1, 1, 1)
+fullbrightBtn.Font = Enum.Font.Code
+fullbrightBtn.TextSize = 14
+fullbrightBtn.Text = "Fullbright (Sáng): OFF"
+Instance.new("UICorner", fullbrightBtn).CornerRadius = UDim.new(0, 5)
+
+local isFullbright = false
+local originalLighting = {
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogEnd = Lighting.FogEnd,
+    GlobalShadows = Lighting.GlobalShadows
+}
+
+fullbrightBtn.MouseButton1Click:Connect(function()
+    isFullbright = not isFullbright
+    fullbrightBtn.Text = isFullbright and "Fullbright (Sáng): ON" or "Fullbright (Sáng): OFF"
+    fullbrightBtn.BackgroundColor3 = isFullbright and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(40, 40, 40)
+    
+    if not isFullbright then
+        -- Trả lại ánh sáng gốc khi tắt
+        Lighting.Ambient = originalLighting.Ambient
+        Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+        Lighting.Brightness = originalLighting.Brightness
+        Lighting.ClockTime = originalLighting.ClockTime
+        Lighting.FogEnd = originalLighting.FogEnd
+        Lighting.GlobalShadows = originalLighting.GlobalShadows
+    end
+end)
+
+-- Vòng lặp giữ Fullbright không bị game ghi đè (nhiều game có cơ chế thời gian thực)
+task.spawn(function()
+    while task.wait(0.5) do
+        if isFullbright then
+            Lighting.Ambient = Color3.new(1, 1, 1)
+            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 14
+            Lighting.FogEnd = 100000
+            Lighting.GlobalShadows = false
+        end
+    end
+end)
+
+-- *Lưu ý: Bạn có thể cần điều chỉnh lại biến `frame.Size` ở Phần 1 hoặc Phần 2 nếu khung Menu bị thiếu chỗ cho 2 nút này.*
