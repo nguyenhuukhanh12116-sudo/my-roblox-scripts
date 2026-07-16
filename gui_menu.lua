@@ -166,31 +166,17 @@ incFloatBtn.MouseButton1Click:Connect(function() local cur = MySettings.floatTpS
 RenderTPManagerList(); RenderFloatScreenButtons()
 
 -- ==========================================
--- LOGIC AUTO ROLL THÔNG MINH (ĐỌC SỐ GIÂY)
+-- LOGIC AUTO ROLL THÔNG MINH (XÓA ÂM THANH, KHÔNG DELAY)
 -- ==========================================
 local function isRollReady(text)
     if not text then return false end
     local t = string.lower(text)
-    
-    -- Điều kiện 1: Phải có chữ "roll" hoặc "cuộn"
     if not (string.find(t, "cuộn") or string.find(t, "roll")) then return false end
-    
-    -- Điều kiện 2: Kiểm tra xem có đang đếm ngược số giây (vd: "4s", "12s") không
     local secMatch = string.match(t, "(%d+)s")
-    if secMatch and tonumber(secMatch) > 0 then 
-        return false -- Đang lớn hơn 0s -> Bỏ qua
-    end
-    
-    -- Điều kiện 3: Kiểm tra định dạng đồng hồ (vd: "00:04")
+    if secMatch and tonumber(secMatch) > 0 then return false end
     local m, s = string.match(t, "(%d+):(%d+)")
-    if m and s and (tonumber(m) > 0 or tonumber(s) > 0) then 
-        return false -- Vẫn còn thời gian đếm ngược -> Bỏ qua
-    end
-    
-    -- Điều kiện 4: Kiểm tra chữ hiển thị trạng thái chờ
+    if m and s and (tonumber(m) > 0 or tonumber(s) > 0) then return false end
     if string.find(t, "cooldown") or string.find(t, "wait") then return false end
-    
-    -- Nếu qua hết bài test trên (VD: nó hiện "0s", "00:00", hoặc "Roll 1x") -> Click
     return true
 end
 
@@ -204,30 +190,31 @@ end)
 
 task.spawn(function()
     while true do
-        task.wait(0.2) -- Check mỗi 0.2s để bắt đúng nhịp 0s nhanh nhất
+        task.wait(0.2)
         if autoRollEnabled then
             local pGui = LocalPlayer:FindFirstChild("PlayerGui")
             if pGui then
                 for _, element in pairs(pGui:GetDescendants()) do
                     if (element:IsA("TextButton") or element:IsA("ImageButton")) and element.Visible then
                         local readyToClick = false
-                        
-                        -- Quét Text trực tiếp trên nút
-                        if element:IsA("TextButton") then
-                            readyToClick = isRollReady(element.Text)
-                        end
-                        
-                        -- Quét Text của TextLabel nằm bên trong nút (Nhiều game dùng cách này)
+                        if element:IsA("TextButton") then readyToClick = isRollReady(element.Text) end
                         if not readyToClick then
                             local txtLabel = element:FindFirstChildOfClass("TextLabel")
-                            if txtLabel then
-                                readyToClick = isRollReady(txtLabel.Text)
-                            end
+                            if txtLabel then readyToClick = isRollReady(txtLabel.Text) end
                         end
                         
-                        -- Thực hiện Click nếu thỏa mãn điều kiện
+                        -- Thực hiện click ngay lập tức khi sẵn sàng
                         if readyToClick then
                             pcall(function()
+                                -- Ép volume của tất cả âm thanh trong nút về 0 và ngắt Play
+                                for _, snd in pairs(element:GetDescendants()) do
+                                    if snd:IsA("Sound") then 
+                                        snd.Volume = 0 
+                                        snd.Playing = false 
+                                    end
+                                end
+                                
+                                -- Thực hiện bấm
                                 if firesignal then 
                                     firesignal(element.MouseButton1Click); firesignal(element.Activated) 
                                 else 
