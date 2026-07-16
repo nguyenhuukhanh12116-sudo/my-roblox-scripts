@@ -1,6 +1,3 @@
--- ========================================================
--- PHẦN 1: KHỞI TẠO CẤU HÌNH, GUI CƠ BẢN VÀ MENU CHÍNH
--- ========================================================
 local SETTINGS_FILE = "JNHHGaming_ConfigV2.json"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -63,6 +60,7 @@ local function createBtn(name, text, w, x, y, color, parent)
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6); return b
 end
 
+-- CÁC NÚT CỘT TRÁI
 local jumpBtn = createBtn("jumpBtn", infiniteJumpEnabled and "Inf: ON" or "Inf: OFF", 150, 10, 10, infiniteJumpEnabled and C_ON_GRN or C_OFF, frame)
 local noclipBtn = createBtn("noclipBtn", noclipEnabled and "Noclip: ON" or "Noclip: OFF", 150, 10, 45, noclipEnabled and C_ON_GRN or C_OFF, frame)
 local espBtn = createBtn("espBtn", espEnabled and "ESP: ON" or "ESP: OFF", 150, 10, 80, espEnabled and Color3.fromRGB(0, 180, 255) or C_OFF, frame)
@@ -76,6 +74,7 @@ local minBtn = createBtn("minBtn", "Thu nhỏ (-)", 150, 10, 325, Color3.fromRGB
 minBtn.MouseButton1Click:Connect(function() frame.Visible = false; openButton.Visible = true end)
 openButton.MouseButton1Click:Connect(function() openButton.Visible = false; frame.Visible = true end)
 
+-- CỘT PHẢI & GIAO DIỆN (ĐÃ CHUẨN HÓA LẠI LAYOUT NÚT MÀU/FULLBRIGHT)
 local col2 = Instance.new("Frame", frame); col2.Size = UDim2.new(0, 180, 1, -20); col2.Position = UDim2.new(0, 170, 0, 10); col2.BackgroundTransparency = 1
 local col2List = Instance.new("UIListLayout", col2); col2List.Padding = UDim.new(0, 5); col2List.SortOrder = Enum.SortOrder.LayoutOrder
 
@@ -102,13 +101,14 @@ local incFloatBtn = createBtn("incFlBtn", "Size +", 45, 135, 35, Color3.fromRGB(
 local scrollList = Instance.new("ScrollingFrame", floatTpFrame)
 scrollList.Size = UDim2.new(1, 0, 1, -70); scrollList.Position = UDim2.new(0, 0, 0, 70); scrollList.BackgroundTransparency = 1; scrollList.ScrollBarThickness = 4; scrollList.CanvasSize = UDim2.new(0, 0, 0, 0)
 local scrollLayout = Instance.new("UIListLayout", scrollList); scrollLayout.Padding = UDim.new(0, 5)
--- ========================================================
--- PHẦN 2: LOGIC QUẢN LÝ TP, FLOAT NÚT VÀ AUTO ROLL
--- ========================================================
+
+local colorBtn = createBtn("colorBtn", "Màu Menu: Mặc định", 180, 0, 0, Color3.fromRGB(50, 50, 60), col2); colorBtn.LayoutOrder = 7
+local fullbrightBtn = createBtn("fbBtn", "Fullbright: OFF", 180, 0, 0, Color3.fromRGB(40, 40, 40), col2); fullbrightBtn.LayoutOrder = 8
 local isSafeOpen, isTpOpen, isFloatTpOpen = false, false, false
 local function updateMainFrameSize()
     local baseHeight = 450
-    local col2Height = 10 + 35 + (isSafeOpen and 70 or 0) + 35 + (isTpOpen and 105 or 0) + 35 + (isFloatTpOpen and 240 or 0)
+    -- Đã cập nhật phép tính cho 5 nút trong col2
+    local col2Height = 10 + (35 * 5) + (isSafeOpen and 70 or 0) + (isTpOpen and 105 or 0) + (isFloatTpOpen and 240 or 0)
     frame.Size = UDim2.new(0, 360, 0, math.max(baseHeight, col2Height))
 end
 
@@ -165,9 +165,6 @@ decFloatBtn.MouseButton1Click:Connect(function() local cur = MySettings.floatTpS
 incFloatBtn.MouseButton1Click:Connect(function() local cur = MySettings.floatTpSizeValue or 80; if cur < 150 then MySettings.floatTpSizeValue = cur + 10; floatSizeLbl.Text = "Size: " .. MySettings.floatTpSizeValue; SaveConfig(); RenderFloatScreenButtons() end end)
 RenderTPManagerList(); RenderFloatScreenButtons()
 
--- ==========================================
--- LOGIC AUTO ROLL THÔNG MINH (XÓA ÂM THANH, KHÔNG DELAY)
--- ==========================================
 local function isRollReady(text)
     if not text then return false end
     local t = string.lower(text)
@@ -180,14 +177,7 @@ local function isRollReady(text)
     return true
 end
 
-autoRollBtn.MouseButton1Click:Connect(function() 
-    autoRollEnabled = not autoRollEnabled; 
-    autoRollBtn.Text = autoRollEnabled and "Auto Cuộn: ON" or "Auto Cuộn: OFF"; 
-    autoRollBtn.BackgroundColor3 = autoRollEnabled and Color3.fromRGB(255, 100, 0) or C_OFF; 
-    MySettings.autoRollEnabled = autoRollEnabled; 
-    SaveConfig() 
-end)
-
+autoRollBtn.MouseButton1Click:Connect(function() autoRollEnabled = not autoRollEnabled; autoRollBtn.Text = autoRollEnabled and "Auto Cuộn: ON" or "Auto Cuộn: OFF"; autoRollBtn.BackgroundColor3 = autoRollEnabled and Color3.fromRGB(255, 100, 0) or C_OFF; MySettings.autoRollEnabled = autoRollEnabled; SaveConfig() end)
 task.spawn(function()
     while true do
         task.wait(0.2)
@@ -198,40 +188,14 @@ task.spawn(function()
                     if (element:IsA("TextButton") or element:IsA("ImageButton")) and element.Visible then
                         local readyToClick = false
                         if element:IsA("TextButton") then readyToClick = isRollReady(element.Text) end
-                        if not readyToClick then
-                            local txtLabel = element:FindFirstChildOfClass("TextLabel")
-                            if txtLabel then readyToClick = isRollReady(txtLabel.Text) end
-                        end
-                        
-                        -- Thực hiện click ngay lập tức khi sẵn sàng
-                        if readyToClick then
-                            pcall(function()
-                                -- Ép volume của tất cả âm thanh trong nút về 0 và ngắt Play
-                                for _, snd in pairs(element:GetDescendants()) do
-                                    if snd:IsA("Sound") then 
-                                        snd.Volume = 0 
-                                        snd.Playing = false 
-                                    end
-                                end
-                                
-                                -- Thực hiện bấm
-                                if firesignal then 
-                                    firesignal(element.MouseButton1Click); firesignal(element.Activated) 
-                                else 
-                                    for _, conn in pairs(getconnections(element.Activated) or {}) do conn:Fire() end
-                                    for _, conn in pairs(getconnections(element.MouseButton1Click) or {}) do conn:Fire() end 
-                                end
-                            end)
-                        end
+                        if not readyToClick then local txtLabel = element:FindFirstChildOfClass("TextLabel"); if txtLabel then readyToClick = isRollReady(txtLabel.Text) end end
+                        if readyToClick then pcall(function() for _, snd in pairs(element:GetDescendants()) do if snd:IsA("Sound") then snd.Volume = 0; snd.Playing = false end end; if firesignal then firesignal(element.MouseButton1Click); firesignal(element.Activated) else for _, conn in pairs(getconnections(element.Activated) or {}) do conn:Fire() end; for _, conn in pairs(getconnections(element.MouseButton1Click) or {}) do conn:Fire() end end end) end
                     end
                 end
             end
         end
     end
 end)
--- ========================================================
--- PHẦN 3: CÁC CHỨC NĂNG CỐT LÕI VÀ VÒNG LẶP
--- ========================================================
 local tpSquare = Instance.new("TextButton"); tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue); tpSquare.Position = UDim2.new(MySettings.tpSquareX_Scale, MySettings.tpSquareX_Offset, MySettings.tpSquareY_Scale, MySettings.tpSquareY_Offset); tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50); tpSquare.Text = "TP"; tpSquare.TextColor3 = Color3.new(1,1,1); tpSquare.Font = FONT; tpSquare.TextSize = 16; tpSquare.Visible = tpaEnabled; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
 local safeSquare = Instance.new("TextButton"); safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue); safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset); safeSquare.BackgroundColor3 = safeEnabled and C_ON_GRN or Color3.fromRGB(255, 180, 0); safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.TextColor3 = Color3.new(0,0,0); safeSquare.Font = FONT; safeSquare.TextSize = 14; safeSquare.Visible = showSafeSquare; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
 
@@ -264,11 +228,7 @@ incTpBtn.MouseButton1Click:Connect(function() if tpSizeValue < 150 then tpSizeVa
 decSfBtn.MouseButton1Click:Connect(function() if safeSizeValue > 30 then safeSizeValue = safeSizeValue - 10; safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue); MySettings.safeSizeValue = safeSizeValue; SaveConfig() end end)
 incSfBtn.MouseButton1Click:Connect(function() if safeSizeValue < 150 then safeSizeValue = safeSizeValue + 10; safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue); MySettings.safeSizeValue = safeSizeValue; SaveConfig() end end)
 
-local function checkSafePlatform()
-    if safeEnabled then local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if hrp and (not safePart or not safePart.Parent) then safePart = Instance.new("Part"); safePart.Size = Vector3.new(20, 1, 20); safePart.Position = Vector3.new(hrp.Position.X, hrp.Position.Y + 300, hrp.Position.Z); safePart.Anchored = true; safePart.BrickColor = BrickColor.new("White"); safePart.Parent = workspace; hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end
-    else if safePart then safePart:Destroy(); safePart = nil end end
-end
-
+local function checkSafePlatform() if safeEnabled then local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if hrp and (not safePart or not safePart.Parent) then safePart = Instance.new("Part"); safePart.Size = Vector3.new(20, 1, 20); safePart.Position = Vector3.new(hrp.Position.X, hrp.Position.Y + 300, hrp.Position.Z); safePart.Anchored = true; safePart.BrickColor = BrickColor.new("White"); safePart.Parent = workspace; hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end else if safePart then safePart:Destroy(); safePart = nil end end end
 safeBtn.MouseButton1Click:Connect(function() safeEnabled = not safeEnabled; safeBtn.Text = safeEnabled and "Safe: ON" or "Safe: OFF"; safeBtn.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 150, 0) or C_OFF; safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.BackgroundColor3 = safeEnabled and C_ON_GRN or Color3.fromRGB(255, 180, 0); MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform() end)
 showSafeBtn.MouseButton1Click:Connect(function() showSafeSquare = not showSafeSquare; showSafeBtn.Text = showSafeSquare and "BtnSF: ON" or "BtnSF: OFF"; showSafeBtn.BackgroundColor3 = showSafeSquare and C_ON_GRN or Color3.fromRGB(200, 50, 50); safeSquare.Visible = showSafeSquare; MySettings.showSafeSquare = showSafeSquare; SaveConfig() end)
 safeSquare.MouseButton1Click:Connect(function() safeEnabled = not safeEnabled; safeBtn.Text = safeEnabled and "Safe: ON" or "Safe: OFF"; safeBtn.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 150, 0) or C_OFF; safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.BackgroundColor3 = safeEnabled and C_ON_GRN or Color3.fromRGB(255, 180, 0); MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform(); if safeEnabled then task.wait(0.05); if safePart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end end end)
@@ -307,121 +267,58 @@ task.spawn(function() while true do task.wait(0.01); if tpNearestEnabled then pc
 LocalPlayer.CharacterAdded:Connect(function(char) task.wait(0.5); checkSafePlatform(); updateESPStatus(); trackWeapon(char) end)
 if LocalPlayer.Character then trackWeapon(LocalPlayer.Character) end
 checkSafePlatform(); updateESPStatus()
--- ========================================================
--- PHẦN 4: TÍNH NĂNG FULLBRIGHT & ĐỔI MÀU GIAO DIỆN (RAINBOW)
--- ========================================================
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
 
--- 1. TÌM TỰ ĐỘNG ICON MỞ MENU (Để đổi màu cùng Menu)
-local openMenuBtn = nil
-for _, child in pairs(gui:GetChildren()) do
-    if (child:IsA("TextButton") or child:IsA("ImageButton")) and child ~= frame and child.Name ~= "Frame" then
-        openMenuBtn = child
-        break
-    end
-end
-
--- 2. TẠO NÚT ĐỔI MÀU GIAO DIỆN
-local colorBtn = Instance.new("TextButton", frame)
-colorBtn.Size = UDim2.new(1, -20, 0, 30)
-colorBtn.Position = UDim2.new(0, 10, 1, -115) -- Điều chỉnh vị trí Y để không đè lên nút khác
-colorBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-colorBtn.TextColor3 = Color3.new(1, 1, 1)
-colorBtn.Font = Enum.Font.Code
-colorBtn.TextSize = 14
-colorBtn.Text = "Màu Menu: Mặc định"
-Instance.new("UICorner", colorBtn).CornerRadius = UDim.new(0, 5)
-
+-- LOGIC ĐỔI MÀU MENU
 local themes = {
     {name = "Mặc định (Đen)", color = Color3.fromRGB(30, 30, 35)},
     {name = "Đỏ Huyết", color = Color3.fromRGB(150, 0, 0)},
     {name = "Xanh Nước", color = Color3.fromRGB(0, 50, 150)},
     {name = "Lục Bảo", color = Color3.fromRGB(0, 100, 50)},
-    {name = "Tím Mộng Mơ", color = Color3.fromRGB(100, 0, 150)},
+    {name = "Tím Mộng", color = Color3.fromRGB(100, 0, 150)},
     {name = "Hồng Ne-on", color = Color3.fromRGB(200, 50, 100)},
-    {name = "CẦU VỒNG (Rainbow)", color = "Rainbow"}
+    {name = "CẦU VỒNG", color = "Rainbow"}
 }
-local currentThemeIdx = 1
-local rainbowConn = nil
-
+local currentThemeIdx, rainbowConn = 1, nil
 colorBtn.MouseButton1Click:Connect(function()
     currentThemeIdx = currentThemeIdx + 1
     if currentThemeIdx > #themes then currentThemeIdx = 1 end
-    
     local theme = themes[currentThemeIdx]
     colorBtn.Text = "Màu Menu: " .. theme.name
     
-    -- Xóa hiệu ứng cầu vồng cũ nếu có
-    if rainbowConn then 
-        rainbowConn:Disconnect() 
-        rainbowConn = nil 
-    end
-    
+    if rainbowConn then rainbowConn:Disconnect(); rainbowConn = nil end
     if theme.color == "Rainbow" then
-        -- Chế độ Cầu Vồng (Chuyển màu liên tục)
         rainbowConn = RunService.RenderStepped:Connect(function()
-            local hue = tick() % 5 / 5 -- Tốc độ đổi màu (chu kỳ 5 giây)
-            local rbColor = Color3.fromHSV(hue, 1, 1)
-            frame.BackgroundColor3 = rbColor
-            if openMenuBtn then openMenuBtn.BackgroundColor3 = rbColor end
+            local rbColor = Color3.fromHSV((tick() % 5 / 5), 1, 1)
+            frame.BackgroundColor3 = rbColor; openButton.BackgroundColor3 = rbColor
         end)
     else
-        -- Chế độ màu tĩnh
-        frame.BackgroundColor3 = theme.color
-        if openMenuBtn then openMenuBtn.BackgroundColor3 = theme.color end
+        frame.BackgroundColor3 = theme.color; openButton.BackgroundColor3 = theme.color
     end
 end)
 
--- 3. TẠO NÚT FULLBRIGHT (NHÌN XUYÊN MÀN ĐÊM)
-local fullbrightBtn = Instance.new("TextButton", frame)
-fullbrightBtn.Size = UDim2.new(1, -20, 0, 30)
-fullbrightBtn.Position = UDim2.new(0, 10, 1, -75) -- Đặt dưới nút đổi màu
-fullbrightBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-fullbrightBtn.TextColor3 = Color3.new(1, 1, 1)
-fullbrightBtn.Font = Enum.Font.Code
-fullbrightBtn.TextSize = 14
-fullbrightBtn.Text = "Fullbright (Sáng): OFF"
-Instance.new("UICorner", fullbrightBtn).CornerRadius = UDim.new(0, 5)
-
+-- LOGIC FULLBRIGHT
 local isFullbright = false
-local originalLighting = {
-    Ambient = Lighting.Ambient,
-    OutdoorAmbient = Lighting.OutdoorAmbient,
-    Brightness = Lighting.Brightness,
-    ClockTime = Lighting.ClockTime,
-    FogEnd = Lighting.FogEnd,
-    GlobalShadows = Lighting.GlobalShadows
+local origLight = {
+    Amb = Lighting.Ambient, Out = Lighting.OutdoorAmbient,
+    Brt = Lighting.Brightness, Clk = Lighting.ClockTime,
+    Fog = Lighting.FogEnd, GShad = Lighting.GlobalShadows
 }
-
 fullbrightBtn.MouseButton1Click:Connect(function()
     isFullbright = not isFullbright
-    fullbrightBtn.Text = isFullbright and "Fullbright (Sáng): ON" or "Fullbright (Sáng): OFF"
+    fullbrightBtn.Text = isFullbright and "Fullbright: ON" or "Fullbright: OFF"
     fullbrightBtn.BackgroundColor3 = isFullbright and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(40, 40, 40)
-    
     if not isFullbright then
-        -- Trả lại ánh sáng gốc khi tắt
-        Lighting.Ambient = originalLighting.Ambient
-        Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
-        Lighting.Brightness = originalLighting.Brightness
-        Lighting.ClockTime = originalLighting.ClockTime
-        Lighting.FogEnd = originalLighting.FogEnd
-        Lighting.GlobalShadows = originalLighting.GlobalShadows
+        Lighting.Ambient = origLight.Amb; Lighting.OutdoorAmbient = origLight.Out
+        Lighting.Brightness = origLight.Brt; Lighting.ClockTime = origLight.Clk
+        Lighting.FogEnd = origLight.Fog; Lighting.GlobalShadows = origLight.GShad
     end
 end)
-
--- Vòng lặp giữ Fullbright không bị game ghi đè (nhiều game có cơ chế thời gian thực)
 task.spawn(function()
     while task.wait(0.5) do
         if isFullbright then
-            Lighting.Ambient = Color3.new(1, 1, 1)
-            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-            Lighting.Brightness = 2
-            Lighting.ClockTime = 14
-            Lighting.FogEnd = 100000
-            Lighting.GlobalShadows = false
+            Lighting.Ambient = Color3.new(1, 1, 1); Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+            Lighting.Brightness = 2; Lighting.ClockTime = 14
+            Lighting.FogEnd = 100000; Lighting.GlobalShadows = false
         end
     end
 end)
-
--- *Lưu ý: Bạn có thể cần điều chỉnh lại biến `frame.Size` ở Phần 1 hoặc Phần 2 nếu khung Menu bị thiếu chỗ cho 2 nút này.*
