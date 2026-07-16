@@ -15,7 +15,8 @@ local MySettings = {
     noclipEnabled = false, showSafeSquare = true, tpSizeValue = 50, safeSizeValue = 50,
     fpsBoostEnabled = false, noFogEnabled = false, clickTpEnabled = false,
     tpSquareX_Scale = 0.5, tpSquareX_Offset = -55, tpSquareY_Scale = 0.5, tpSquareY_Offset = -25,
-    safeSquareX_Scale = 0.5, safeSquareX_Offset = 5, safeSquareY_Scale = 0.5, safeSquareY_Offset = -25
+    safeSquareX_Scale = 0.5, safeSquareX_Offset = 5, safeSquareY_Scale = 0.5, safeSquareY_Offset = -25,
+    floatTpData = {} -- LƯU TRỮ VỊ TRÍ VÀ TỌA ĐỘ CỦA NÚT TP NỔI
 }
 
 local function SaveConfig()
@@ -39,29 +40,19 @@ local safePart, espObjects, squareTpActive, isAttacking, oldCFrame = nil, {}, fa
 local gui = Instance.new("ScreenGui")
 gui.Name = "JNHHGamingCompact"; gui.ResetOnSpawn = false; gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Khung menu chính
 local frame = Instance.new("Frame")
 frame.Name = "CompactFrame"; frame.Size = UDim2.new(0, 340, 0, 330); frame.Position = UDim2.new(0, 50, 0, 50) 
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35); frame.BackgroundTransparency = 0.15
 frame.BorderSizePixel = 0; frame.Active = true; frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
--- NÚT MỞ MENU (Đã làm nhỏ lại 50x30 và đặt vị trí mặc định riêng biệt)
 local openButton = Instance.new("TextButton")
-openButton.Name = "OpenButton"
-openButton.Size = UDim2.new(0, 50, 0, 30) -- Thu nhỏ kích cỡ (Cũ là 90x35)
-openButton.Position = UDim2.new(0, 15, 0, 15) -- Tách riêng vị trí mặc định ra góc màn hình (Cũ là đè lên frame)
-openButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-openButton.TextColor3 = Color3.new(1, 1, 1)
-openButton.Font = Enum.Font.SourceSansBold
-openButton.TextSize = 12 -- Chữ nhỏ hơn cho cân đối với nút
-openButton.Text = "Mở" -- Rút gọn chữ
-openButton.Visible = false
-openButton.Active = true
-openButton.Parent = gui
+openButton.Name = "OpenButton"; openButton.Size = UDim2.new(0, 50, 0, 30); openButton.Position = UDim2.new(0, 15, 0, 15)
+openButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255); openButton.TextColor3 = Color3.new(1, 1, 1)
+openButton.Font = Enum.Font.SourceSansBold; openButton.TextSize = 12; openButton.Text = "Mở"
+openButton.Visible = false; openButton.Active = true; openButton.Parent = gui
 Instance.new("UICorner", openButton).CornerRadius = UDim.new(0, 6)
 
--- Hàm kéo thả UI độc lập hoàn toàn
 local function makeDraggable(ui)
     local drag, dragStart, startPos, touchObj = false, nil, nil, nil
     ui.InputBegan:Connect(function(input)
@@ -78,6 +69,7 @@ local function makeDraggable(ui)
     end)
 end
 makeDraggable(frame); makeDraggable(openButton)
+
 -- ========================================================
 -- PHẦN 2: THIẾT LẬP CÁC NÚT BẤM, MENU PHỤ VÀ HỆ THỐNG PHÍM NỔI
 -- ========================================================
@@ -102,17 +94,9 @@ local fogBtn = createBtn("fogBtn", noFogEnabled and "NoFog: ON" or "NoFog: OFF",
 local clickTpBtn = createBtn("clickTpBtn", clickTpEnabled and "ClickTP: ON" or "ClickTP: OFF", 150, 10, 255, clickTpEnabled and C_ON_GRN or C_OFF, frame)
 local minBtn = createBtn("minBtn", "Thu nhỏ (-)", 150, 10, 290, Color3.fromRGB(200, 50, 50), frame)
 
--- SỬA LỖI: Chỉ ẩn/hiện chứ không gán đè vị trí của nhau nữa
-minBtn.MouseButton1Click:Connect(function() 
-    frame.Visible = false
-    openButton.Visible = true 
-end)
-openButton.MouseButton1Click:Connect(function() 
-    openButton.Visible = false
-    frame.Visible = true 
-end)
+minBtn.MouseButton1Click:Connect(function() frame.Visible = false; openButton.Visible = true end)
+openButton.MouseButton1Click:Connect(function() openButton.Visible = false; frame.Visible = true end)
 
--- CỘT 2: MENU
 local col2 = Instance.new("Frame", frame)
 col2.Size = UDim2.new(0, 160, 1, -20); col2.Position = UDim2.new(0, 170, 0, 10); col2.BackgroundTransparency = 1
 local col2List = Instance.new("UIListLayout", col2); col2List.Padding = UDim.new(0, 5); col2List.SortOrder = Enum.SortOrder.LayoutOrder
@@ -131,7 +115,6 @@ local tpaBtn = createBtn("tpaBtn", tpaEnabled and "TPA: ON" or "TPA: OFF", 160, 
 local decTpBtn = createBtn("decTpBtn", "TP Size: -", 75, 0, 70, Color3.fromRGB(180, 50, 50), tpFrame)
 local incTpBtn = createBtn("incTpBtn", "TP Size: +", 75, 85, 70, Color3.fromRGB(50, 180, 50), tpFrame)
 
--- MENU CUSTOM TP NỔI
 local floatTpMenuBtn = createBtn("fTpMenuBtn", "▶ Nút TP Nổi", 160, 0, 0, Color3.fromRGB(80, 80, 90), col2); floatTpMenuBtn.LayoutOrder = 5
 local floatTpFrame = Instance.new("Frame", col2); floatTpFrame.BackgroundTransparency = 1; floatTpFrame.Size = UDim2.new(0, 160, 0, 105); floatTpFrame.Visible = false; floatTpFrame.LayoutOrder = 6
 
@@ -152,7 +135,7 @@ safeMenuBtn.MouseButton1Click:Connect(function() isSafeOpen = not isSafeOpen; sa
 tpMenuBtn.MouseButton1Click:Connect(function() isTpOpen = not isTpOpen; tpFrame.Visible = isTpOpen; tpMenuBtn.Text = isTpOpen and "▼ Thu gọn TP" or "▶ Menu TP"; updateMainFrameSize() end)
 floatTpMenuBtn.MouseButton1Click:Connect(function() isFloatTpOpen = not isFloatTpOpen; floatTpFrame.Visible = isFloatTpOpen; floatTpMenuBtn.Text = isFloatTpOpen and "▼ Thu gọn Nút" or "▶ Nút TP Nổi"; updateMainFrameSize() end)
 
--- LOGIC XỬ LÝ NÚT TP NỔI TRÊN MÀN HÌNH
+-- LOGIC AUTO-SAVE CHO NÚT TP NỔI TRÊN MÀN HÌNH
 local floatTpList = {}
 local floatSizeMulti = 1
 local floatDraggable = true
@@ -164,36 +147,32 @@ lockDragBtn.MouseButton1Click:Connect(function()
 end)
 
 local function updateFloatingSizes()
-    for _, item in ipairs(floatTpList) do
-        item.Frame.Size = UDim2.new(0, 140 * floatSizeMulti, 0, 50 * floatSizeMulti)
-    end
+    for _, item in ipairs(floatTpList) do item.Frame.Size = UDim2.new(0, 140 * floatSizeMulti, 0, 50 * floatSizeMulti) end
 end
 decFSizeBtn.MouseButton1Click:Connect(function() if floatSizeMulti > 0.5 then floatSizeMulti = floatSizeMulti - 0.1; updateFloatingSizes() end end)
 incFSizeBtn.MouseButton1Click:Connect(function() if floatSizeMulti < 2 then floatSizeMulti = floatSizeMulti + 0.1; updateFloatingSizes() end end)
 
-addFloatBtn.MouseButton1Click:Connect(function()
-    local id = #floatTpList + 1; local cframeData = nil
+local function createSingleFloatTP(id, data)
+    local cframeData = nil
+    if data and data.cframe then pcall(function() cframeData = CFrame.new(unpack(data.cframe)) end) end
     
     local f = Instance.new("Frame", gui)
     f.Name = "FloatTP_" .. id; f.Size = UDim2.new(0, 140 * floatSizeMulti, 0, 50 * floatSizeMulti)
-    f.Position = UDim2.new(0.5, 0, 0.5, id * 60)
-    f.BackgroundColor3 = Color3.new(0, 0, 0)
-    f.BorderColor3 = Color3.new(1, 0, 0); f.BorderSizePixel = 2
-    f.Active = true
+    if data and data.pos then f.Position = UDim2.new(data.pos[1], data.pos[2], data.pos[3], data.pos[4])
+    else f.Position = UDim2.new(0.5, 0, 0.5, id * 60) end
+    f.BackgroundColor3 = Color3.new(0, 0, 0); f.BorderColor3 = Color3.new(1, 0, 0); f.BorderSizePixel = 2; f.Active = true
     
     local numLbl = Instance.new("TextLabel", f)
-    numLbl.Size = UDim2.new(0.15, 0, 1, 0); numLbl.Position = UDim2.new(0.02, 0, 0, 0)
-    numLbl.BackgroundTransparency = 1; numLbl.Text = tostring(id); numLbl.TextColor3 = Color3.new(1, 1, 1); numLbl.Font = Enum.Font.SourceSansBold; numLbl.TextSize = 16
+    numLbl.Size = UDim2.new(0.15, 0, 1, 0); numLbl.Position = UDim2.new(0.02, 0, 0, 0); numLbl.BackgroundTransparency = 1
+    numLbl.Text = tostring(id); numLbl.TextColor3 = Color3.new(1, 1, 1); numLbl.Font = Enum.Font.SourceSansBold; numLbl.TextSize = 16
     
     local setBtn = Instance.new("TextButton", f)
-    setBtn.Size = UDim2.new(0.35, 0, 0.7, 0); setBtn.Position = UDim2.new(0.2, 0, 0.15, 0)
-    setBtn.BackgroundColor3 = Color3.new(1, 0, 0); setBtn.BorderColor3 = Color3.new(0.5, 0, 0); setBtn.BorderSizePixel = 1
-    setBtn.Text = "Set"; setBtn.TextColor3 = Color3.new(0, 0, 0); setBtn.Font = Enum.Font.SourceSansBold; setBtn.TextSize = 18
+    setBtn.Size = UDim2.new(0.35, 0, 0.7, 0); setBtn.Position = UDim2.new(0.2, 0, 0.15, 0); setBtn.BackgroundColor3 = Color3.new(1, 0, 0)
+    setBtn.BorderColor3 = Color3.new(0.5, 0, 0); setBtn.BorderSizePixel = 1; setBtn.Text = "Set"; setBtn.TextColor3 = Color3.new(0, 0, 0); setBtn.Font = Enum.Font.SourceSansBold; setBtn.TextSize = 18
     
     local tpBtn = Instance.new("TextButton", f)
-    tpBtn.Size = UDim2.new(0.35, 0, 0.7, 0); tpBtn.Position = UDim2.new(0.6, 0, 0.15, 0)
-    tpBtn.BackgroundColor3 = Color3.new(1, 0, 0); tpBtn.BorderColor3 = Color3.new(0.5, 0, 0); tpBtn.BorderSizePixel = 1
-    tpBtn.Text = "TP"; tpBtn.TextColor3 = Color3.new(0, 0, 0); tpBtn.Font = Enum.Font.SourceSansBold; tpBtn.TextSize = 18
+    tpBtn.Size = UDim2.new(0.35, 0, 0.7, 0); tpBtn.Position = UDim2.new(0.6, 0, 0.15, 0); tpBtn.BackgroundColor3 = Color3.new(1, 0, 0)
+    tpBtn.BorderColor3 = Color3.new(0.5, 0, 0); tpBtn.BorderSizePixel = 1; tpBtn.Text = "TP"; tpBtn.TextColor3 = Color3.new(0, 0, 0); tpBtn.Font = Enum.Font.SourceSansBold; tpBtn.TextSize = 18
 
     local drag, dragStart, startPos, touchObj = false, nil, nil, nil
     f.InputBegan:Connect(function(input)
@@ -201,7 +180,14 @@ addFloatBtn.MouseButton1Click:Connect(function()
             drag = true; dragStart = input.Position; startPos = f.Position; touchObj = input
         end
     end)
-    f.InputEnded:Connect(function(input) if input == touchObj then drag = false; touchObj = nil end end)
+    f.InputEnded:Connect(function(input) 
+        if input == touchObj then 
+            drag = false; touchObj = nil 
+            MySettings.floatTpData[id] = MySettings.floatTpData[id] or {}
+            MySettings.floatTpData[id].pos = {f.Position.X.Scale, f.Position.X.Offset, f.Position.Y.Scale, f.Position.Y.Offset}
+            SaveConfig() -- Tự lưu vị trí
+        end 
+    end)
     UserInputService.InputChanged:Connect(function(input)
         if drag and floatDraggable and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then
             local delta = input.Position - dragStart
@@ -211,26 +197,39 @@ addFloatBtn.MouseButton1Click:Connect(function()
 
     setBtn.MouseButton1Click:Connect(function()
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then cframeData = hrp.CFrame; setBtn.Text = "OK"; task.delay(1, function() setBtn.Text = "Set" end) end
+        if hrp then 
+            cframeData = hrp.CFrame
+            MySettings.floatTpData[id] = MySettings.floatTpData[id] or {}
+            MySettings.floatTpData[id].cframe = {cframeData:GetComponents()}
+            SaveConfig() -- Tự lưu CFrame tọa độ
+            setBtn.Text = "OK"; task.delay(1, function() setBtn.Text = "Set" end) 
+        end
     end)
     tpBtn.MouseButton1Click:Connect(function()
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp and cframeData then hrp.CFrame = cframeData end
     end)
-    
     table.insert(floatTpList, {Frame = f, SetBtn = setBtn, TpBtn = tpBtn, Num = numLbl})
+end
+
+addFloatBtn.MouseButton1Click:Connect(function()
+    local id = #floatTpList + 1
+    MySettings.floatTpData[id] = MySettings.floatTpData[id] or {}
+    createSingleFloatTP(id, MySettings.floatTpData[id]); SaveConfig()
 end)
 
 delFloatBtn.MouseButton1Click:Connect(function()
     if #floatTpList > 0 then
         local last = table.remove(floatTpList, #floatTpList)
         last.Frame:Destroy()
+        table.remove(MySettings.floatTpData, #MySettings.floatTpData); SaveConfig()
     end
 end)
+
+for id, data in ipairs(MySettings.floatTpData) do createSingleFloatTP(id, data) end
 -- ========================================================
 -- PHẦN 3: LOGIC CHỨC NĂNG CHÍNH (NOCLIP, ESP, INF JUMP, SAFE PLATFORM, FLING...)
 -- ========================================================
--- NÚT VUÔNG TP VÀ SAFE
 local tpSquare = Instance.new("TextButton"); tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue); tpSquare.Position = UDim2.new(MySettings.tpSquareX_Scale, MySettings.tpSquareX_Offset, MySettings.tpSquareY_Scale, MySettings.tpSquareY_Offset) 
 tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50); tpSquare.Text = "TP"; tpSquare.TextColor3 = Color3.new(1,1,1); tpSquare.Font = FONT; tpSquare.TextSize = 16; tpSquare.Visible = tpaEnabled; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
 
@@ -274,7 +273,6 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- LOGIC NOCLIP (TẮT TỰ NHẢY + ĐI XUYÊN TƯỜNG + KHÔNG LỌT ĐẤT)
 noclipBtn.MouseButton1Click:Connect(function()
     noclipEnabled = not noclipEnabled; noclipBtn.Text = noclipEnabled and "Noclip: ON" or "Noclip: OFF"
     noclipBtn.BackgroundColor3 = noclipEnabled and C_ON_GRN or C_OFF; MySettings.noclipEnabled = noclipEnabled; SaveConfig()
