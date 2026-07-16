@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
+local TeleportService = game:GetService("TeleportService")
 
 local MySettings = {
     infiniteJumpEnabled = false, safeEnabled = false, tpNearestEnabled = false,
@@ -42,7 +43,7 @@ Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
 local openButton = Instance.new("TextButton"); openButton.Name = "OpenButton"; openButton.Size = UDim2.new(0, 50, 0, 30); openButton.Position = UDim2.new(0, 15, 0, 15)
 openButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255); openButton.TextColor3 = Color3.new(1, 1, 1); openButton.Font = Enum.Font.SourceSansBold; openButton.TextSize = 12
-openButton.Text = "Mở"; openButton.Visible = false; openButton.Active = true; openButton.Parent = gui
+openButton.Text = "Menu"; openButton.Visible = true; openButton.Active = true; openButton.Parent = gui
 Instance.new("UICorner", openButton).CornerRadius = UDim.new(0, 6)
 
 local function makeDraggable(ui)
@@ -60,7 +61,6 @@ local function createBtn(name, text, w, x, y, color, parent)
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6); return b
 end
 
--- CÁC NÚT CỘT TRÁI
 local jumpBtn = createBtn("jumpBtn", infiniteJumpEnabled and "Inf: ON" or "Inf: OFF", 150, 10, 10, infiniteJumpEnabled and C_ON_GRN or C_OFF, frame)
 local noclipBtn = createBtn("noclipBtn", noclipEnabled and "Noclip: ON" or "Noclip: OFF", 150, 10, 45, noclipEnabled and C_ON_GRN or C_OFF, frame)
 local espBtn = createBtn("espBtn", espEnabled and "ESP: ON" or "ESP: OFF", 150, 10, 80, espEnabled and Color3.fromRGB(0, 180, 255) or C_OFF, frame)
@@ -70,11 +70,24 @@ local fpsBtn = createBtn("fpsBtn", fpsBoostEnabled and "FPS: ON" or "FPS: OFF", 
 local fogBtn = createBtn("fogBtn", noFogEnabled and "NoFog: ON" or "NoFog: OFF", 150, 10, 220, noFogEnabled and C_ON_GRN or C_OFF, frame)
 local clickTpBtn = createBtn("clickTpBtn", clickTpEnabled and "ClickTP: ON" or "ClickTP: OFF", 150, 10, 255, clickTpEnabled and C_ON_GRN or C_OFF, frame)
 local autoRollBtn = createBtn("aRollBtn", autoRollEnabled and "Auto Cuộn: ON" or "Auto Cuộn: OFF", 150, 10, 290, autoRollEnabled and Color3.fromRGB(255, 100, 0) or C_OFF, frame)
-local minBtn = createBtn("minBtn", "Thu nhỏ (-)", 150, 10, 325, Color3.fromRGB(200, 50, 50), frame)
-minBtn.MouseButton1Click:Connect(function() frame.Visible = false; openButton.Visible = true end)
-openButton.MouseButton1Click:Connect(function() openButton.Visible = false; frame.Visible = true end)
 
--- CỘT PHẢI & GIAO DIỆN (ĐÃ CHUẨN HÓA LẠI LAYOUT NÚT MÀU/FULLBRIGHT)
+local serverHopBtn = createBtn("srvHopBtn", "Server HOP (Đông)", 150, 10, 325, Color3.fromRGB(200, 100, 0), frame)
+serverHopBtn.MouseButton1Click:Connect(function()
+    serverHopBtn.Text = "Đang tìm..."
+    local success, response = pcall(function() return game:HttpGet("https://games.roblox.com/v1/games/" .. tostring(game.PlaceId) .. "/servers/Public?sortOrder=Desc&excludeFullGames=true&limit=100") end)
+    if success and response then
+        local data = HttpService:JSONDecode(response)
+        if data and data.data then
+            local servers = data.data
+            table.sort(servers, function(a, b) return a.playing > b.playing end)
+            for _, server in ipairs(servers) do if server.id ~= game.JobId and server.playing < server.maxPlayers then serverHopBtn.Text = "Đang Join..."; TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer); break end end
+        end
+    else
+        serverHopBtn.Text = "Lỗi HTTP"; task.wait(2); serverHopBtn.Text = "Server HOP (Đông)"
+    end
+end)
+
+openButton.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
 local col2 = Instance.new("Frame", frame); col2.Size = UDim2.new(0, 180, 1, -20); col2.Position = UDim2.new(0, 170, 0, 10); col2.BackgroundTransparency = 1
 local col2List = Instance.new("UIListLayout", col2); col2List.Padding = UDim.new(0, 5); col2List.SortOrder = Enum.SortOrder.LayoutOrder
 
@@ -107,7 +120,6 @@ local fullbrightBtn = createBtn("fbBtn", "Fullbright: OFF", 180, 0, 0, Color3.fr
 local isSafeOpen, isTpOpen, isFloatTpOpen = false, false, false
 local function updateMainFrameSize()
     local baseHeight = 450
-    -- Đã cập nhật phép tính cho 5 nút trong col2
     local col2Height = 10 + (35 * 5) + (isSafeOpen and 70 or 0) + (isTpOpen and 105 or 0) + (isFloatTpOpen and 240 or 0)
     frame.Size = UDim2.new(0, 360, 0, math.max(baseHeight, col2Height))
 end
@@ -268,7 +280,6 @@ LocalPlayer.CharacterAdded:Connect(function(char) task.wait(0.5); checkSafePlatf
 if LocalPlayer.Character then trackWeapon(LocalPlayer.Character) end
 checkSafePlatform(); updateESPStatus()
 
--- LOGIC ĐỔI MÀU MENU
 local themes = {
     {name = "Mặc định (Đen)", color = Color3.fromRGB(30, 30, 35)},
     {name = "Đỏ Huyết", color = Color3.fromRGB(150, 0, 0)},
@@ -296,7 +307,6 @@ colorBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- LOGIC FULLBRIGHT
 local isFullbright = false
 local origLight = {
     Amb = Lighting.Ambient, Out = Lighting.OutdoorAmbient,
