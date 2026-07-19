@@ -16,7 +16,10 @@ local MySettings = {
     tpSquareX_Scale = 0.5, tpSquareX_Offset = -55, tpSquareY_Scale = 0.5, tpSquareY_Offset = -25,
     safeSquareX_Scale = 0.5, safeSquareX_Offset = 5, safeSquareY_Scale = 0.5, safeSquareY_Offset = -25,
     autoRollEnabled = false, tpManagerData = {}, 
-    bvPercent = 30, bvEnabled = false, bv2Enabled = false, bv2TargetIdx = 1 -- BẢO VỆ MỚI UPDATE
+    bvPercent = 30, bvEnabled = false, bv2Enabled = false, bv2TargetIdx = 1,
+    tpFrontEnabled = false, tpFrontDistance = 5,
+    showTcSquare = false, tcSizeValue = 50, tcLocked = false,
+    tcSquareX_Scale = 0.5, tcSquareX_Offset = 65, tcSquareY_Scale = 0.5, tcSquareY_Offset = -25
 }
 
 local function SaveConfig() pcall(function() if writefile then writefile(SETTINGS_FILE, HttpService:JSONEncode(MySettings)) end end) end
@@ -61,7 +64,6 @@ local function createBtn(name, text, w, x, y, color, parent)
     b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1, 1, 1); b.Font = FONT; b.TextSize = 13; b.Text = text; b.Parent = parent
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6); return b
 end
-
 local jumpBtn = createBtn("jumpBtn", infiniteJumpEnabled and "Inf: ON" or "Inf: OFF", 150, 10, 10, infiniteJumpEnabled and C_ON_GRN or C_OFF, frame)
 local noclipBtn = createBtn("noclipBtn", noclipEnabled and "Noclip: ON" or "Noclip: OFF", 150, 10, 45, noclipEnabled and C_ON_GRN or C_OFF, frame)
 local espBtn = createBtn("espBtn", espEnabled and "ESP: ON" or "ESP: OFF", 150, 10, 80, espEnabled and Color3.fromRGB(0, 180, 255) or C_OFF, frame)
@@ -71,36 +73,23 @@ local fpsBtn = createBtn("fpsBtn", fpsBoostEnabled and "FPS: ON" or "FPS: OFF", 
 local fogBtn = createBtn("fogBtn", noFogEnabled and "NoFog: ON" or "NoFog: OFF", 150, 10, 220, noFogEnabled and C_ON_GRN or C_OFF, frame)
 local clickTpBtn = createBtn("clickTpBtn", clickTpEnabled and "ClickTP: ON" or "ClickTP: OFF", 150, 10, 255, clickTpEnabled and C_ON_GRN or C_OFF, frame)
 local autoRollBtn = createBtn("aRollBtn", autoRollEnabled and "Auto Cuộn: ON" or "Auto Cuộn: OFF", 150, 10, 290, autoRollEnabled and Color3.fromRGB(255, 100, 0) or C_OFF, frame)
-
 local serverHopBtn = createBtn("srvHopBtn", "Server HOP (Đông)", 150, 10, 325, Color3.fromRGB(200, 100, 0), frame)
 local hopClickCount = 0
 serverHopBtn.MouseButton1Click:Connect(function()
-    if hopClickCount == 0 then
-        hopClickCount = 1
-        serverHopBtn.Text = "Bấm lần nữa để HOP"
-        task.delay(2, function()
-            if hopClickCount == 1 then
-                hopClickCount = 0
-                serverHopBtn.Text = "Server HOP (Đông)"
-            end
-        end)
+    if hopClickCount == 0 then hopClickCount = 1; serverHopBtn.Text = "Bấm lần nữa để HOP"
+        task.delay(2, function() if hopClickCount == 1 then hopClickCount = 0; serverHopBtn.Text = "Server HOP (Đông)" end end)
     else
-        hopClickCount = 0
-        serverHopBtn.Text = "Đang tìm..."
+        hopClickCount = 0; serverHopBtn.Text = "Đang tìm..."
         local success, response = pcall(function() return game:HttpGet("https://games.roblox.com/v1/games/" .. tostring(game.PlaceId) .. "/servers/Public?sortOrder=Desc&excludeFullGames=true&limit=100") end)
         if success and response then
             local data = HttpService:JSONDecode(response)
             if data and data.data then
-                local servers = data.data
-                table.sort(servers, function(a, b) return a.playing > b.playing end)
+                local servers = data.data; table.sort(servers, function(a, b) return a.playing > b.playing end)
                 for _, server in ipairs(servers) do if server.id ~= game.JobId and server.playing < server.maxPlayers then serverHopBtn.Text = "Đang Join..."; TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer); break end end
             end
-        else
-            serverHopBtn.Text = "Lỗi HTTP"; task.wait(2); serverHopBtn.Text = "Server HOP (Đông)"
-        end
+        else serverHopBtn.Text = "Lỗi HTTP"; task.wait(2); serverHopBtn.Text = "Server HOP (Đông)" end
     end
 end)
-
 openButton.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
 local col2 = Instance.new("Frame", frame); col2.Size = UDim2.new(0, 180, 1, -20); col2.Position = UDim2.new(0, 170, 0, 10); col2.BackgroundTransparency = 1
 local col2List = Instance.new("UIListLayout", col2); col2List.Padding = UDim.new(0, 5); col2List.SortOrder = Enum.SortOrder.LayoutOrder
@@ -131,42 +120,32 @@ local scrollLayout = Instance.new("UIListLayout", scrollList); scrollLayout.Padd
 
 local colorBtn = createBtn("colorBtn", "Màu Menu: Mặc định", 180, 0, 0, Color3.fromRGB(50, 50, 60), col2); colorBtn.LayoutOrder = 7
 local fullbrightBtn = createBtn("fbBtn", "Fullbright: OFF", 180, 0, 0, Color3.fromRGB(40, 40, 40), col2); fullbrightBtn.LayoutOrder = 8
-
 local bvMenuBtn = createBtn("bvMenuBtn", "▶ Menu Bảo Vệ (Máu)", 180, 0, 0, Color3.fromRGB(80, 80, 90), col2); bvMenuBtn.LayoutOrder = 9
 local bvFrame = Instance.new("Frame", col2); bvFrame.BackgroundTransparency = 1; bvFrame.Size = UDim2.new(0, 180, 0, 105); bvFrame.Visible = false; bvFrame.LayoutOrder = 10
-
-local bvPercentBox = Instance.new("TextBox", bvFrame)
-bvPercentBox.Size = UDim2.new(0, 85, 0, 30); bvPercentBox.Position = UDim2.new(0, 0, 0, 0)
-bvPercentBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50); bvPercentBox.TextColor3 = Color3.new(1,1,1); bvPercentBox.Font = FONT; bvPercentBox.TextSize = 14
-bvPercentBox.Text = tostring(MySettings.bvPercent or 30) .. "%"; bvPercentBox.ClearTextOnFocus = false
-Instance.new("UICorner", bvPercentBox).CornerRadius = UDim.new(0, 4)
-
+local bvPercentBox = Instance.new("TextBox", bvFrame); bvPercentBox.Size = UDim2.new(0, 85, 0, 30); bvPercentBox.Position = UDim2.new(0, 0, 0, 0); bvPercentBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50); bvPercentBox.TextColor3 = Color3.new(1,1,1); bvPercentBox.Font = FONT; bvPercentBox.TextSize = 14; bvPercentBox.Text = tostring(MySettings.bvPercent or 30) .. "%"; bvPercentBox.ClearTextOnFocus = false; Instance.new("UICorner", bvPercentBox).CornerRadius = UDim.new(0, 4)
 local bvBtn = createBtn("bvBtn", MySettings.bvEnabled and "BV (Safe): ON" or "BV (Safe): OFF", 85, 95, 0, MySettings.bvEnabled and C_ON_GRN or C_OFF, bvFrame)
 local bv2Btn = createBtn("bv2Btn", MySettings.bv2Enabled and "BV2 (Về Set): ON" or "BV2 (Về Set): OFF", 180, 0, 35, MySettings.bv2Enabled and Color3.fromRGB(150, 50, 200) or C_OFF, bvFrame)
-local decBv2Btn = createBtn("decBv2", "<", 30, 0, 70, Color3.fromRGB(200, 50, 50), bvFrame)
-local bv2IdxLbl = createBtn("bv2Lbl", "Điểm Set: " .. (MySettings.bv2TargetIdx or 1), 110, 35, 70, Color3.fromRGB(80, 80, 90), bvFrame)
-local incBv2Btn = createBtn("incBv2", ">", 30, 150, 70, Color3.fromRGB(50, 200, 50), bvFrame)
+local decBv2Btn = createBtn("decBv2", "<", 30, 0, 70, Color3.fromRGB(200, 50, 50), bvFrame); local bv2IdxLbl = createBtn("bv2Lbl", "Điểm Set: " .. (MySettings.bv2TargetIdx or 1), 110, 35, 70, Color3.fromRGB(80, 80, 90), bvFrame); local incBv2Btn = createBtn("incBv2", ">", 30, 150, 70, Color3.fromRGB(50, 200, 50), bvFrame)
 
-local isSafeOpen, isTpOpen, isFloatTpOpen, isBvOpen = false, false, false, false
+local tcMenuBtn = createBtn("tcMenuBtn", "▶ Menu TP Trước Mặt (TC)", 180, 0, 0, Color3.fromRGB(80, 80, 90), col2); tcMenuBtn.LayoutOrder = 11
+local tcFrame = Instance.new("Frame", col2); tcFrame.BackgroundTransparency = 1; tcFrame.Size = UDim2.new(0, 180, 0, 145); tcFrame.Visible = false; tcFrame.LayoutOrder = 12
+local tpTcBtn = createBtn("tpTcBtn", MySettings.tpFrontEnabled and "TP TC: ON" or "TP TC: OFF", 180, 0, 0, MySettings.tpFrontEnabled and C_ON_GRN or C_OFF, tcFrame)
+local decTcBtn = createBtn("decTcBtn", "KC -", 45, 0, 35, Color3.fromRGB(200, 50, 50), tcFrame); local tcDistLbl = createBtn("tcDistLbl", "KC: "..(MySettings.tpFrontDistance or 5), 80, 50, 35, Color3.fromRGB(80, 80, 90), tcFrame); local incTcBtn = createBtn("incTcBtn", "KC +", 45, 135, 35, Color3.fromRGB(50, 200, 50), tcFrame)
+local showTcBtn = createBtn("showTcBtn", MySettings.showTcSquare and "BtnTC: ON" or "BtnTC: OFF", 85, 0, 70, MySettings.showTcSquare and C_ON_GRN or C_OFF, tcFrame)
+local lockTcBtn = createBtn("lockTcBtn", MySettings.tcLocked and "Lock TC: ON" or "Lock TC: OFF", 85, 95, 70, MySettings.tcLocked and Color3.fromRGB(255, 100, 0) or C_OFF, tcFrame)
+local decTcSizeBtn = createBtn("decTcSize", "Sz -", 45, 0, 105, Color3.fromRGB(200, 50, 50), tcFrame); local tcSizeLbl = createBtn("tcSizeLbl", "Size: "..(MySettings.tcSizeValue or 50), 80, 50, 105, Color3.fromRGB(80, 80, 90), tcFrame); local incTcSizeBtn = createBtn("incTcSize", "Sz +", 45, 135, 105, Color3.fromRGB(50, 200, 50), tcFrame)
+
+local isSafeOpen, isTpOpen, isFloatTpOpen, isBvOpen, isTcOpen = false, false, false, false, false
 local function updateMainFrameSize()
     local baseHeight = 450
-    local col2Height = 10 + (35 * 6) + (isSafeOpen and 70 or 0) + (isTpOpen and 105 or 0) + (isFloatTpOpen and 240 or 0) + (isBvOpen and 110 or 0)
+    local col2Height = 10 + (35 * 7) + (isSafeOpen and 70 or 0) + (isTpOpen and 105 or 0) + (isFloatTpOpen and 240 or 0) + (isBvOpen and 110 or 0) + (isTcOpen and 145 or 0)
     frame.Size = UDim2.new(0, 360, 0, math.max(baseHeight, col2Height))
 end
-
 safeMenuBtn.MouseButton1Click:Connect(function() isSafeOpen = not isSafeOpen; safeFrame.Visible = isSafeOpen; safeMenuBtn.Text = isSafeOpen and "▼ Thu gọn SAFE" or "▶ Menu SAFE"; updateMainFrameSize() end)
 tpMenuBtn.MouseButton1Click:Connect(function() isTpOpen = not isTpOpen; tpFrame.Visible = isTpOpen; tpMenuBtn.Text = isTpOpen and "▼ Thu gọn Menu TP" or "▶ Menu TP (Nút Vuông)"; updateMainFrameSize() end)
 floatTpMenuBtn.MouseButton1Click:Connect(function() isFloatTpOpen = not isFloatTpOpen; floatTpFrame.Visible = isFloatTpOpen; floatTpMenuBtn.Text = isFloatTpOpen and "▼ Thu gọn Quản Lý TP" or "▶ Quản Lý TP (Cài Đặt)"; updateMainFrameSize() end)
 bvMenuBtn.MouseButton1Click:Connect(function() isBvOpen = not isBvOpen; bvFrame.Visible = isBvOpen; bvMenuBtn.Text = isBvOpen and "▼ Thu gọn Bảo Vệ" or "▶ Menu Bảo Vệ (Máu)"; updateMainFrameSize() end)
-
-bvPercentBox.FocusLost:Connect(function()
-    local val = tonumber(bvPercentBox.Text:match("%d+")); if val and val >= 1 and val <= 99 then MySettings.bvPercent = val; bvPercentBox.Text = val .. "%" else bvPercentBox.Text = (MySettings.bvPercent or 30) .. "%" end; SaveConfig()
-end)
-bvBtn.MouseButton1Click:Connect(function() MySettings.bvEnabled = not MySettings.bvEnabled; bvBtn.Text = MySettings.bvEnabled and "BV (Safe): ON" or "BV (Safe): OFF"; bvBtn.BackgroundColor3 = MySettings.bvEnabled and C_ON_GRN or C_OFF; SaveConfig() end)
-bv2Btn.MouseButton1Click:Connect(function() MySettings.bv2Enabled = not MySettings.bv2Enabled; bv2Btn.Text = MySettings.bv2Enabled and "BV2 (Về Set): ON" or "BV2 (Về Set): OFF"; bv2Btn.BackgroundColor3 = MySettings.bv2Enabled and Color3.fromRGB(150, 50, 200) or C_OFF; SaveConfig() end)
-
-decBv2Btn.MouseButton1Click:Connect(function() local cur = MySettings.bv2TargetIdx or 1; if cur > 1 then MySettings.bv2TargetIdx = cur - 1; bv2IdxLbl.Text = "Điểm Set: " .. MySettings.bv2TargetIdx; SaveConfig() end end)
-incBv2Btn.MouseButton1Click:Connect(function() local cur = MySettings.bv2TargetIdx or 1; local maxSet = #MySettings.tpManagerData; if maxSet == 0 then maxSet = 1 end; if cur < maxSet then MySettings.bv2TargetIdx = cur + 1; bv2IdxLbl.Text = "Điểm Set: " .. MySettings.bv2TargetIdx; SaveConfig() end end)
+tcMenuBtn.MouseButton1Click:Connect(function() isTcOpen = not isTcOpen; tcFrame.Visible = isTcOpen; tcMenuBtn.Text = isTcOpen and "▼ Thu gọn TP TC" or "▶ Menu TP Trước Mặt (TC)"; updateMainFrameSize() end)
 
 local floatingUIs = {}
 local function RenderFloatScreenButtons()
@@ -174,8 +153,7 @@ local function RenderFloatScreenButtons()
     local sizeV = MySettings.floatTpSizeValue or 80
     for i, data in ipairs(MySettings.tpManagerData) do
         if data.show then
-            local f = Instance.new("Frame", gui)
-            f.Size = UDim2.new(0, sizeV, 0, sizeV / 2)
+            local f = Instance.new("Frame", gui); f.Size = UDim2.new(0, sizeV, 0, sizeV / 2)
             if data.pos then f.Position = UDim2.new(data.pos[1], data.pos[2], data.pos[3], data.pos[4]) else f.Position = UDim2.new(0.2 + (i%3)*0.1, 0, 0.2 + math.floor(i/3)*0.1, 0) end
             f.BackgroundColor3 = Color3.new(0,0,0); f.BorderColor3 = Color3.new(1,0,0); f.BorderSizePixel = 2; f.Active = true
             local numLbl = Instance.new("TextLabel", f); numLbl.Size = UDim2.new(0.3, 0, 1, 0); numLbl.BackgroundTransparency = 1; numLbl.Text = tostring(i); numLbl.TextColor3 = Color3.new(1,1,1); numLbl.Font = FONT; numLbl.TextSize = 16
@@ -208,44 +186,52 @@ local function RenderTPManagerList()
     end
     scrollList.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 end
-
 addTpManagerBtn.MouseButton1Click:Connect(function() table.insert(MySettings.tpManagerData, { name = "Set " .. (#MySettings.tpManagerData + 1), cframe = nil, show = true, pos = nil }); SaveConfig(); RenderTPManagerList(); RenderFloatScreenButtons() end)
 decFloatBtn.MouseButton1Click:Connect(function() local cur = MySettings.floatTpSizeValue or 80; if cur > 40 then MySettings.floatTpSizeValue = cur - 10; floatSizeLbl.Text = "Size: " .. MySettings.floatTpSizeValue; SaveConfig(); RenderFloatScreenButtons() end end)
 incFloatBtn.MouseButton1Click:Connect(function() local cur = MySettings.floatTpSizeValue or 80; if cur < 150 then MySettings.floatTpSizeValue = cur + 10; floatSizeLbl.Text = "Size: " .. MySettings.floatTpSizeValue; SaveConfig(); RenderFloatScreenButtons() end end)
 RenderTPManagerList(); RenderFloatScreenButtons()
-
 local function isRollReady(text)
-    if not text then return false end
-    local t = string.lower(text)
+    if not text then return false end; local t = string.lower(text)
     if not (string.find(t, "cuộn") or string.find(t, "roll")) then return false end
-    local secMatch = string.match(t, "(%d+)s")
-    if secMatch and tonumber(secMatch) > 0 then return false end
-    local m, s = string.match(t, "(%d+):(%d+)")
-    if m and s and (tonumber(m) > 0 or tonumber(s) > 0) then return false end
-    if string.find(t, "cooldown") or string.find(t, "wait") then return false end
-    return true
+    local secMatch = string.match(t, "(%d+)s"); if secMatch and tonumber(secMatch) > 0 then return false end
+    local m, s = string.match(t, "(%d+):(%d+)"); if m and s and (tonumber(m) > 0 or tonumber(s) > 0) then return false end
+    if string.find(t, "cooldown") or string.find(t, "wait") then return false end; return true
 end
-
 autoRollBtn.MouseButton1Click:Connect(function() autoRollEnabled = not autoRollEnabled; autoRollBtn.Text = autoRollEnabled and "Auto Cuộn: ON" or "Auto Cuộn: OFF"; autoRollBtn.BackgroundColor3 = autoRollEnabled and Color3.fromRGB(255, 100, 0) or Color3.fromRGB(60, 60, 70); MySettings.autoRollEnabled = autoRollEnabled; SaveConfig() end)
 task.spawn(function() while true do task.wait(0.2); if autoRollEnabled then local pGui = LocalPlayer:FindFirstChild("PlayerGui"); if pGui then for _, element in pairs(pGui:GetDescendants()) do if (element:IsA("TextButton") or element:IsA("ImageButton")) and element.Visible then local readyToClick = false; if element:IsA("TextButton") then readyToClick = isRollReady(element.Text) end; if not readyToClick then local txtLabel = element:FindFirstChildOfClass("TextLabel"); if txtLabel then readyToClick = isRollReady(txtLabel.Text) end end; if readyToClick then pcall(function() for _, snd in pairs(element:GetDescendants()) do if snd:IsA("Sound") then snd.Volume = 0; snd.Playing = false end end; if firesignal then firesignal(element.MouseButton1Click); firesignal(element.Activated) else for _, conn in pairs(getconnections(element.Activated) or {}) do conn:Fire() end; for _, conn in pairs(getconnections(element.MouseButton1Click) or {}) do conn:Fire() end end end) end end end end end end end)
 
 local tpSquare = Instance.new("TextButton"); tpSquare.Size = UDim2.new(0, tpSizeValue, 0, tpSizeValue); tpSquare.Position = UDim2.new(MySettings.tpSquareX_Scale, MySettings.tpSquareX_Offset, MySettings.tpSquareY_Scale, MySettings.tpSquareY_Offset); tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50); tpSquare.Text = "TP"; tpSquare.TextColor3 = Color3.new(1,1,1); tpSquare.Font = Enum.Font.SourceSansBold; tpSquare.TextSize = 16; tpSquare.Visible = tpaEnabled; tpSquare.BorderSizePixel = 0; tpSquare.Parent = gui
 local safeSquare = Instance.new("TextButton"); safeSquare.Size = UDim2.new(0, safeSizeValue, 0, safeSizeValue); safeSquare.Position = UDim2.new(MySettings.safeSquareX_Scale, MySettings.safeSquareX_Offset, MySettings.safeSquareY_Scale, MySettings.safeSquareY_Offset); safeSquare.BackgroundColor3 = safeEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 180, 0); safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.TextColor3 = Color3.new(0,0,0); safeSquare.Font = Enum.Font.SourceSansBold; safeSquare.TextSize = 14; safeSquare.Visible = showSafeSquare; safeSquare.BorderSizePixel = 0; safeSquare.Parent = gui
+local tcSquare = Instance.new("TextButton"); tcSquare.Size = UDim2.new(0, MySettings.tcSizeValue, 0, MySettings.tcSizeValue); tcSquare.Position = UDim2.new(MySettings.tcSquareX_Scale, MySettings.tcSquareX_Offset, MySettings.tcSquareY_Scale, MySettings.tcSquareY_Offset); tcSquare.BackgroundColor3 = MySettings.tpFrontEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 180, 0); tcSquare.Text = MySettings.tpFrontEnabled and "TC: ON" or "TC"; tcSquare.TextColor3 = Color3.new(0,0,0); tcSquare.Font = Enum.Font.SourceSansBold; tcSquare.TextSize = 14; tcSquare.Visible = MySettings.showTcSquare; tcSquare.BorderSizePixel = 0; tcSquare.Parent = gui
 
-local function setupSquareDrag(targetUi, settingPrefix)
+local function setupSquareDrag(targetUi, settingPrefix, isTc)
     local drag, dragStart, startPos, touchObj = false, nil, nil, nil
-    targetUi.InputBegan:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and moveEnabled then drag = true; touchObj = input; dragStart = input.Position; startPos = targetUi.Position end end)
+    targetUi.InputBegan:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then if isTc and MySettings.tcLocked then return end; if not isTc and not moveEnabled then return end; drag = true; touchObj = input; dragStart = input.Position; startPos = targetUi.Position end end)
     targetUi.InputEnded:Connect(function(input) if input == touchObj then drag = false; touchObj = nil; MySettings[settingPrefix.."X_Scale"] = targetUi.Position.X.Scale; MySettings[settingPrefix.."X_Offset"] = targetUi.Position.X.Offset; MySettings[settingPrefix.."Y_Scale"] = targetUi.Position.Y.Scale; MySettings[settingPrefix.."Y_Offset"] = targetUi.Position.Y.Offset; SaveConfig() end end)
-    UserInputService.InputChanged:Connect(function(input) if drag and moveEnabled and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then local delta = input.Position - dragStart; targetUi.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+    UserInputService.InputChanged:Connect(function(input) if drag and (input == touchObj or input.UserInputType == Enum.UserInputType.MouseMovement) then local delta = input.Position - dragStart; targetUi.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 end
-setupSquareDrag(tpSquare, "tpSquare"); setupSquareDrag(safeSquare, "safeSquare")
+setupSquareDrag(tpSquare, "tpSquare", false); setupSquareDrag(safeSquare, "safeSquare", false); setupSquareDrag(tcSquare, "tcSquare", true)
+bvPercentBox.FocusLost:Connect(function() local val = tonumber(bvPercentBox.Text:match("%d+")); if val and val >= 1 and val <= 99 then MySettings.bvPercent = val; bvPercentBox.Text = val .. "%" else bvPercentBox.Text = (MySettings.bvPercent or 30) .. "%" end; SaveConfig() end)
+bvBtn.MouseButton1Click:Connect(function() MySettings.bvEnabled = not MySettings.bvEnabled; bvBtn.Text = MySettings.bvEnabled and "BV (Safe): ON" or "BV (Safe): OFF"; bvBtn.BackgroundColor3 = MySettings.bvEnabled and C_ON_GRN or C_OFF; SaveConfig() end)
+bv2Btn.MouseButton1Click:Connect(function() MySettings.bv2Enabled = not MySettings.bv2Enabled; bv2Btn.Text = MySettings.bv2Enabled and "BV2 (Về Set): ON" or "BV2 (Về Set): OFF"; bv2Btn.BackgroundColor3 = MySettings.bv2Enabled and Color3.fromRGB(150, 50, 200) or C_OFF; SaveConfig() end)
+decBv2Btn.MouseButton1Click:Connect(function() local cur = MySettings.bv2TargetIdx or 1; if cur > 1 then MySettings.bv2TargetIdx = cur - 1; bv2IdxLbl.Text = "Điểm Set: " .. MySettings.bv2TargetIdx; SaveConfig() end end)
+incBv2Btn.MouseButton1Click:Connect(function() local cur = MySettings.bv2TargetIdx or 1; local maxSet = #MySettings.tpManagerData; if maxSet == 0 then maxSet = 1 end; if cur < maxSet then MySettings.bv2TargetIdx = cur + 1; bv2IdxLbl.Text = "Điểm Set: " .. MySettings.bv2TargetIdx; SaveConfig() end end)
+
+local function SyncTcState() MySettings.tpFrontEnabled = not MySettings.tpFrontEnabled; tpTcBtn.Text = MySettings.tpFrontEnabled and "TP TC: ON" or "TP TC: OFF"; tpTcBtn.BackgroundColor3 = MySettings.tpFrontEnabled and C_ON_GRN or C_OFF; tcSquare.Text = MySettings.tpFrontEnabled and "TC: ON" or "TC"; tcSquare.BackgroundColor3 = MySettings.tpFrontEnabled and C_ON_GRN or Color3.fromRGB(255, 180, 0); SaveConfig() end
+tpTcBtn.MouseButton1Click:Connect(SyncTcState); tcSquare.MouseButton1Click:Connect(SyncTcState)
+decTcBtn.MouseButton1Click:Connect(function() local cur = MySettings.tpFrontDistance or 5; if cur > 1 then MySettings.tpFrontDistance = cur - 1; tcDistLbl.Text = "KC: " .. MySettings.tpFrontDistance; SaveConfig() end end)
+incTcBtn.MouseButton1Click:Connect(function() local cur = MySettings.tpFrontDistance or 5; if cur < 50 then MySettings.tpFrontDistance = cur + 1; tcDistLbl.Text = "KC: " .. MySettings.tpFrontDistance; SaveConfig() end end)
+
+showTcBtn.MouseButton1Click:Connect(function() MySettings.showTcSquare = not MySettings.showTcSquare; showTcBtn.Text = MySettings.showTcSquare and "BtnTC: ON" or "BtnTC: OFF"; showTcBtn.BackgroundColor3 = MySettings.showTcSquare and C_ON_GRN or C_OFF; tcSquare.Visible = MySettings.showTcSquare; SaveConfig() end)
+lockTcBtn.MouseButton1Click:Connect(function() MySettings.tcLocked = not MySettings.tcLocked; lockTcBtn.Text = MySettings.tcLocked and "Lock TC: ON" or "Lock TC: OFF"; lockTcBtn.BackgroundColor3 = MySettings.tcLocked and Color3.fromRGB(255, 100, 0) or C_OFF; SaveConfig() end)
+decTcSizeBtn.MouseButton1Click:Connect(function() local cur = MySettings.tcSizeValue or 50; if cur > 30 then MySettings.tcSizeValue = cur - 10; tcSizeLbl.Text = "Size: " .. MySettings.tcSizeValue; tcSquare.Size = UDim2.new(0, MySettings.tcSizeValue, 0, MySettings.tcSizeValue); SaveConfig() end end)
+incTcSizeBtn.MouseButton1Click:Connect(function() local cur = MySettings.tcSizeValue or 50; if cur < 150 then MySettings.tcSizeValue = cur + 10; tcSizeLbl.Text = "Size: " .. MySettings.tcSizeValue; tcSquare.Size = UDim2.new(0, MySettings.tcSizeValue, 0, MySettings.tcSizeValue); SaveConfig() end end)
 
 local function getClosestPlayer()
     local closestPlayer = nil; local shortestDistance = math.huge; local myChar = LocalPlayer.Character; local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if myHrp then for _, v in pairs(Players:GetPlayers()) do if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then local distance = (myHrp.Position - v.Character.HumanoidRootPart.Position).Magnitude; if distance < shortestDistance then shortestDistance = distance; closestPlayer = v end end end end
     return closestPlayer
 end
-
 noclipBtn.MouseButton1Click:Connect(function() noclipEnabled = not noclipEnabled; noclipBtn.Text = noclipEnabled and "Noclip: ON" or "Noclip: OFF"; noclipBtn.BackgroundColor3 = noclipEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70); MySettings.noclipEnabled = noclipEnabled; SaveConfig() end)
 RunService.Stepped:Connect(function() if noclipEnabled and LocalPlayer.Character then local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if hum then hum.AutoJumpEnabled = false end; for _, part in pairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") then local pName = part.Name:lower(); if not (string.find(pName, "leg") or string.find(pName, "foot") or string.find(pName, "shoe")) then part.CanCollide = false end end end end end)
 fpsBtn.MouseButton1Click:Connect(function() fpsBoostEnabled = not fpsBoostEnabled; fpsBtn.Text = fpsBoostEnabled and "FPS: ON" or "FPS: OFF"; fpsBtn.BackgroundColor3 = fpsBoostEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70); MySettings.fpsBoostEnabled = fpsBoostEnabled; SaveConfig(); if fpsBoostEnabled then for _, v in pairs(workspace:GetDescendants()) do if v:IsA("BasePart") then v.Material = Enum.Material.SmoothPlastic; v.Color = Color3.new(1,1,1); v.CastShadow = false elseif v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 1 end end end end)
@@ -263,49 +249,21 @@ incSfBtn.MouseButton1Click:Connect(function() if safeSizeValue < 150 then safeSi
 
 local function checkSafePlatform() if safeEnabled or MySettings.bvEnabled then local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if hrp and (not safePart or not safePart.Parent) then safePart = Instance.new("Part"); safePart.Size = Vector3.new(20, 1, 20); safePart.Position = Vector3.new(hrp.Position.X, hrp.Position.Y + 300, hrp.Position.Z); safePart.Anchored = true; safePart.BrickColor = BrickColor.new("White"); safePart.Parent = workspace; if safeEnabled then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end end else if safePart then safePart:Destroy(); safePart = nil end end end
 safeBtn.MouseButton1Click:Connect(function() safeEnabled = not safeEnabled; safeBtn.Text = safeEnabled and "Safe: ON" or "Safe: OFF"; safeBtn.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(60, 60, 70); safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.BackgroundColor3 = safeEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 180, 0); MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform() end)
-showSafeBtn.MouseButton1Click:Connect(function() showSafeSquare = not showSafeSquare; showSafeBtn.Text = showSafeSquare and "BtnSF: ON" or "BtnSF: OFF"; showSafeBtn.BackgroundColor3 = showSafeSquare and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50); safeSquare.Visible = showSafeSquare; MySettings.showSafeSquare = showSafeSquare; SaveConfig() end)
+showSafeBtn.MouseButton1Click:Connect(function() showSafeSquare = not showSafeSquare; showSafeBtn.Text = showSafeSquare and "BtnSF: ON" or "BtnSF: OFF"; showSafeBtn.BackgroundColor3 = showSafeSquare and C_ON_GRN or Color3.fromRGB(200, 50, 50); safeSquare.Visible = showSafeSquare; MySettings.showSafeSquare = showSafeSquare; SaveConfig() end)
 safeSquare.MouseButton1Click:Connect(function() safeEnabled = not safeEnabled; safeBtn.Text = safeEnabled and "Safe: ON" or "Safe: OFF"; safeBtn.BackgroundColor3 = safeEnabled and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(60, 60, 70); safeSquare.Text = safeEnabled and "SF: ON" or "SAFE"; safeSquare.BackgroundColor3 = safeEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 180, 0); MySettings.safeEnabled = safeEnabled; SaveConfig(); checkSafePlatform(); if safeEnabled then task.wait(0.05); if safePart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end end end)
 task.spawn(function() while true do task.wait(0.5); if safeEnabled and safePart and safePart.Parent then local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if hrp and hrp.Position.Y < (safePart.Position.Y - 10) then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end end end end)
 
 tpaBtn.MouseButton1Click:Connect(function() tpaEnabled = not tpaEnabled; tpaBtn.Text = tpaEnabled and "TPA: ON" or "TPA: OFF"; tpaBtn.BackgroundColor3 = tpaEnabled and Color3.fromRGB(150, 0, 255) or Color3.fromRGB(60, 60, 70); tpSquare.Visible = tpaEnabled; if not tpaEnabled then squareTpActive = false; tpSquare.Text = "TP"; tpSquare.BackgroundColor3 = Color3.fromRGB(255, 50, 50) end; MySettings.tpaEnabled = tpaEnabled; SaveConfig() end)
-moveBtn.MouseButton1Click:Connect(function() moveEnabled = not moveEnabled; moveBtn.Text = moveEnabled and "Move: ON" or "Move: OFF"; moveBtn.BackgroundColor3 = moveEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70); MySettings.moveEnabled = moveEnabled; SaveConfig() end)
-tpSquare.MouseButton1Click:Connect(function() if tpaEnabled then squareTpActive = not squareTpActive; tpSquare.Text = squareTpActive and "TP: ON" or "TP"; tpSquare.BackgroundColor3 = squareTpActive and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 50, 50) end end)
+moveBtn.MouseButton1Click:Connect(function() moveEnabled = not moveEnabled; moveBtn.Text = moveEnabled and "Move: ON" or "Move: OFF"; moveBtn.BackgroundColor3 = moveEnabled and C_ON_GRN or Color3.fromRGB(60, 60, 70); MySettings.moveEnabled = moveEnabled; SaveConfig() end)
+tpSquare.MouseButton1Click:Connect(function() if tpaEnabled then squareTpActive = not squareTpActive; tpSquare.Text = squareTpActive and "TP: ON" or "TP"; tpSquare.BackgroundColor3 = squareTpActive and C_ON_GRN or Color3.fromRGB(255, 50, 50) end end)
 task.spawn(function() while true do task.wait(0.01); if tpaEnabled and squareTpActive then pcall(function() local targetPlayer = getClosestPlayer(); local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if targetPlayer and myHrp then local targetHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart"); if targetHrp then myHrp.CFrame = targetHrp.CFrame end end end) end end end)
-
-task.spawn(function()
-    while task.wait(0.1) do
-        if MySettings.bvEnabled or MySettings.bv2Enabled then
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChild("Humanoid")
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hum and hrp and hum.Health > 0 and hum.MaxHealth > 0 then
-                local currentPercent = (hum.Health / hum.MaxHealth) * 100
-                local targetPercent = MySettings.bvPercent or 30
-                if currentPercent < targetPercent then
-                    if MySettings.bv2Enabled then
-                        local tpIdx = MySettings.bv2TargetIdx or 1
-                        local tpData = MySettings.tpManagerData[tpIdx]
-                        if tpData and tpData.cframe then
-                            hrp.CFrame = CFrame.new(unpack(tpData.cframe))
-                        end
-                    elseif MySettings.bvEnabled then
-                        if not safePart or not safePart.Parent then checkSafePlatform() end
-                        if safePart then
-                            hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0))
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
+task.spawn(function() while task.wait(0.1) do if MySettings.bvEnabled or MySettings.bv2Enabled then local char = LocalPlayer.Character; local hum = char and char:FindFirstChild("Humanoid"); local hrp = char and char:FindFirstChild("HumanoidRootPart"); if hum and hrp and hum.Health > 0 and hum.MaxHealth > 0 then local currentPercent = (hum.Health / hum.MaxHealth) * 100; local targetPercent = MySettings.bvPercent or 30; if currentPercent < targetPercent then if MySettings.bv2Enabled then local tpIdx = MySettings.bv2TargetIdx or 1; local tpData = MySettings.tpManagerData[tpIdx]; if tpData and tpData.cframe then hrp.CFrame = CFrame.new(unpack(tpData.cframe)) end elseif MySettings.bvEnabled then if not safePart or not safePart.Parent then checkSafePlatform() end; if safePart then hrp.CFrame = CFrame.new(safePart.Position + Vector3.new(0, 3, 0)) end end end end end end end)
 
 local function triggerAttackBlink() if flingEnabled and not isAttacking then local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); local target = getClosestPlayer(); if myHrp and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then if (myHrp.Position - target.Character.HumanoidRootPart.Position).Magnitude < 25 then oldCFrame = myHrp.CFrame; isAttacking = true; task.wait(0.2); isAttacking = false; if oldCFrame then myHrp.CFrame = oldCFrame; myHrp.Velocity = Vector3.new(0,0,0); myHrp.RotVelocity = Vector3.new(0,0,0); oldCFrame = nil end end end end end
 local toolConnection = nil; local function trackWeapon(char) if toolConnection then toolConnection:Disconnect() end; toolConnection = char.ChildAdded:Connect(function(child) if child:IsA("Tool") then child.Activated:Connect(triggerAttackBlink) end end) end
 UserInputService.InputBegan:Connect(function(input, gameProcessed) if not gameProcessed and flingEnabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then triggerAttackBlink() end end)
 flingBtn.MouseButton1Click:Connect(function() flingEnabled = not flingEnabled; flingBtn.Text = flingEnabled and "Atk Fling: ON" or "Atk Fling: OFF"; flingBtn.BackgroundColor3 = flingEnabled and Color3.fromRGB(255, 0, 100) or Color3.fromRGB(60, 60, 70); MySettings.flingEnabled = flingEnabled; SaveConfig() end)
 RunService.Heartbeat:Connect(function() local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if not myHrp then return end; if flingEnabled and isAttacking then pcall(function() local target = getClosestPlayer(); if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then myHrp.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.Angles(math.rad(math.random(0,360)), math.rad(math.random(0,360)), math.rad(math.random(0,360))); myHrp.Velocity = Vector3.new(99999,99999,99999); myHrp.RotVelocity = Vector3.new(99999,99999,99999) end end) elseif flingEnabled then myHrp.Velocity = Vector3.new(0,0,0); myHrp.RotVelocity = Vector3.new(0,0,0) end end)
-
 local function createESP(player)
     if player == LocalPlayer then return end
     local function applyESP(character)
@@ -322,41 +280,35 @@ local function updateESPStatus() if espEnabled then for _, p in pairs(Players:Ge
 espBtn.MouseButton1Click:Connect(function() espEnabled = not espEnabled; espBtn.Text = espEnabled and "ESP: ON" or "ESP: OFF"; espBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(60, 60, 70); MySettings.espEnabled = espEnabled; SaveConfig(); updateESPStatus() end)
 Players.PlayerAdded:Connect(function(p) if espEnabled then createESP(p) end end)
 Players.PlayerRemoving:Connect(function(p) if espObjects[p] then if espObjects[p].Billboard then espObjects[p].Billboard:Destroy() end; espObjects[p] = nil end end)
-tpNearestBtn.MouseButton1Click:Connect(function() tpNearestEnabled = not tpNearestEnabled; tpNearestBtn.Text = tpNearestEnabled and "TP Nrs: ON" or "TP Nrs: OFF"; tpNearestBtn.BackgroundColor3 = tpNearestEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 70); MySettings.tpNearestEnabled = tpNearestEnabled; SaveConfig() end)
-task.spawn(function() while true do task.wait(0.01); if tpNearestEnabled then pcall(function() local targetPlayer = getClosestPlayer(); local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if targetPlayer and myHrp then local targetHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart"); if targetHrp then myHrp.CFrame = targetHrp.CFrame end end end) end end end)
+
+tpNearestBtn.MouseButton1Click:Connect(function() tpNearestEnabled = not tpNearestEnabled; tpNearestBtn.Text = tpNearestEnabled and "TP Nrs: ON" or "TP Nrs: OFF"; tpNearestBtn.BackgroundColor3 = tpNearestEnabled and C_ON_GRN or Color3.fromRGB(60, 60, 70); MySettings.tpNearestEnabled = tpNearestEnabled; SaveConfig() end)
+
+RunService.Heartbeat:Connect(function()
+    pcall(function()
+        local targetPlayer = getClosestPlayer(); local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if targetPlayer and targetPlayer.Character and myHrp then
+            local targetHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if targetHrp then
+                if tpNearestEnabled then myHrp.CFrame = targetHrp.CFrame end
+                if MySettings.tpFrontEnabled then local dist = MySettings.tpFrontDistance or 5; local frontPos = targetHrp.Position + (targetHrp.CFrame.LookVector * dist); myHrp.CFrame = CFrame.new(frontPos, targetHrp.Position) end
+            end
+        end
+    end)
+end)
 
 LocalPlayer.CharacterAdded:Connect(function(char) task.wait(0.5); checkSafePlatform(); updateESPStatus(); trackWeapon(char) end)
 if LocalPlayer.Character then trackWeapon(LocalPlayer.Character) end
 checkSafePlatform(); updateESPStatus()
 
-local themes = {
-    {name = "Mặc định (Đen)", color = Color3.fromRGB(30, 30, 35)},
-    {name = "Đỏ Huyết", color = Color3.fromRGB(150, 0, 0)},
-    {name = "Xanh Nước", color = Color3.fromRGB(0, 50, 150)},
-    {name = "Lục Bảo", color = Color3.fromRGB(0, 100, 50)},
-    {name = "Tím Mộng", color = Color3.fromRGB(100, 0, 150)},
-    {name = "Hồng Ne-on", color = Color3.fromRGB(200, 50, 100)},
-    {name = "CẦU VỒNG", color = "Rainbow"}
-}
+local themes = { {name = "Mặc định (Đen)", color = Color3.fromRGB(30, 30, 35)}, {name = "Đỏ Huyết", color = Color3.fromRGB(150, 0, 0)}, {name = "Xanh Nước", color = Color3.fromRGB(0, 50, 150)}, {name = "Lục Bảo", color = Color3.fromRGB(0, 100, 50)}, {name = "Tím Mộng", color = Color3.fromRGB(100, 0, 150)}, {name = "Hồng Ne-on", color = Color3.fromRGB(200, 50, 100)}, {name = "CẦU VỒNG", color = "Rainbow"} }
 local currentThemeIdx, rainbowConn = 1, nil
 colorBtn.MouseButton1Click:Connect(function()
-    currentThemeIdx = currentThemeIdx + 1
-    if currentThemeIdx > #themes then currentThemeIdx = 1 end
-    local theme = themes[currentThemeIdx]
-    colorBtn.Text = "Màu Menu: " .. theme.name
-    
+    currentThemeIdx = currentThemeIdx + 1; if currentThemeIdx > #themes then currentThemeIdx = 1 end
+    local theme = themes[currentThemeIdx]; colorBtn.Text = "Màu Menu: " .. theme.name
     if rainbowConn then rainbowConn:Disconnect(); rainbowConn = nil end
-    if theme.color == "Rainbow" then
-        rainbowConn = RunService.RenderStepped:Connect(function()
-            local rbColor = Color3.fromHSV((tick() % 5 / 5), 1, 1)
-            frame.BackgroundColor3 = rbColor; openButton.BackgroundColor3 = rbColor
-        end)
-    else
-        frame.BackgroundColor3 = theme.color; openButton.BackgroundColor3 = theme.color
-    end
+    if theme.color == "Rainbow" then rainbowConn = RunService.RenderStepped:Connect(function() local rbColor = Color3.fromHSV((tick() % 5 / 5), 1, 1); frame.BackgroundColor3 = rbColor; openButton.BackgroundColor3 = rbColor end) else frame.BackgroundColor3 = theme.color; openButton.BackgroundColor3 = theme.color end
 end)
-
 local isFullbright = false
 local origLight = { Amb = Lighting.Ambient, Out = Lighting.OutdoorAmbient, Brt = Lighting.Brightness, Clk = Lighting.ClockTime, Fog = Lighting.FogEnd, GShad = Lighting.GlobalShadows }
-fullbrightBtn.MouseButton1Click:Connect(function() isFullbright = not isFullbright; fullbrightBtn.Text = isFullbright and "Fullbright: ON" or "Fullbright: OFF"; fullbrightBtn.BackgroundColor3 = isFullbright and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(40, 40, 40); if not isFullbright then Lighting.Ambient = origLight.Amb; Lighting.OutdoorAmbient = origLight.Out; Lighting.Brightness = origLight.Brt; Lighting.ClockTime = origLight.Clk; Lighting.FogEnd = origLight.Fog; Lighting.GlobalShadows = origLight.GShad end end)
+fullbrightBtn.MouseButton1Click:Connect(function() isFullbright = not isFullbright; fullbrightBtn.Text = isFullbright and "Fullbright: ON" or "Fullbright: OFF"; fullbrightBtn.BackgroundColor3 = isFullbright and C_ON_GRN or Color3.fromRGB(40, 40, 40); if not isFullbright then Lighting.Ambient = origLight.Amb; Lighting.OutdoorAmbient = origLight.Out; Lighting.Brightness = origLight.Brt; Lighting.ClockTime = origLight.Clk; Lighting.FogEnd = origLight.Fog; Lighting.GlobalShadows = origLight.GShad end end)
 task.spawn(function() while task.wait(0.5) do if isFullbright then Lighting.Ambient = Color3.new(1, 1, 1); Lighting.OutdoorAmbient = Color3.new(1, 1, 1); Lighting.Brightness = 2; Lighting.ClockTime = 14; Lighting.FogEnd = 100000; Lighting.GlobalShadows = false end end end)
